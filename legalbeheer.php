@@ -5,16 +5,12 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset(
     exit();
 }
 include 'includes/init.php';
-
-// Bepaal de actieve tab via de URL, standaard 'tab-voorwaarden'
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'tab-voorwaarden';
-
 $message = '';
 
 if (isset($_POST['update_legal'])) {
     $type = $_POST['legal_type'];
     $title = $_POST['legal_title'];
-    // We gebruiken de content direct uit de POST (opgemaakt door TinyMCE)
     $content = $_POST['legal_content']; 
     
     $stmt = $pdo->prepare("UPDATE legals SET title = ?, content = ? WHERE type = ?");
@@ -30,7 +26,7 @@ $cookies = $pdo->query("SELECT * FROM legals WHERE type = 'cookies'")->fetch();
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <title>Juridisch Beheer - Beauty Touch by Nikki</title>
+    <title>Juridisch Beheer - <?php echo htmlspecialchars('hero_title')?> </title>
     <?php include 'includes/head.php'; ?>
     
 <script src="https://cdn.ckeditor.com/ckeditor5/41.1.0/classic/ckeditor.js"></script>
@@ -73,8 +69,6 @@ $cookies = $pdo->query("SELECT * FROM legals WHERE type = 'cookies'")->fetch();
                 }, 4000);
             </script>
         <?php endif; ?>
-
-        <!-- Navigatie Tabs -->
         <div class="border-b border-gray-200 mb-6 bg-white rounded-t-xl shadow-sm overflow-x-auto">
             <nav class="-mb-px flex space-x-6 px-4">
                 <?php 

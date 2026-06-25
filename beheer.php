@@ -5,7 +5,7 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset(
     exit();
 }
 require_once 'includes/functions.php';
-$stmt = $pdo->prepare("SELECT username FROM users WHERE id = ? LIMIT 1");
+$stmt = $pdo->prepare("SELECT username FROM users WHERE uuid = ? LIMIT 1");
 $stmt->execute([$_SESSION['user_uuid']]);
 $user = $stmt->fetch();
 $username = $user ? $user['username'] : 'Beheerder';
@@ -49,11 +49,13 @@ try {
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex items-center gap-4 transition-transform hover:-translate-y-1 duration-300">
                 <div class="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 flex-shrink-0">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"></path></svg>
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                    </svg>
                 </div>
                 <div>
                     <span class="block text-2xl font-bold text-gray-900"><?php echo $stats['products']; ?></span>
-                    <span class="text-sm font-medium text-gray-500">Behandelingen</span>
+                    <span class="text-sm font-medium text-gray-500">Producten</span>
                 </div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex items-center gap-4 transition-transform hover:-translate-y-1 duration-300">
@@ -149,7 +151,7 @@ try {
                                 <span class="w-2.5 h-2.5 bg-pink-500 rounded-full shadow-[0_0_8px_rgba(236,72,153,0.6)]"></span>
                                 <span class="text-sm font-medium text-gray-700">Versie CMS</span>
                             </div>
-                            <span class="text-xs font-bold text-gray-900">v1.2</span>
+                            <span class="text-xs font-bold text-gray-900">Winegum v1.0</span>
                         </div>
                     </div>
                 </div>

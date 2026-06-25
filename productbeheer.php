@@ -85,8 +85,7 @@ if (isset($_GET['delete_prod'])) {
     exit;
 }
 
-// Data ophalen voor de weergave
-$categories = get_categories(); // Zorg dat functies.php is aangepast indien nodig (bijv. id verwijderen en uuid ophalen)
+$categories = get_categories();
 $products = get_all_products_admin();
 $productsByCategory = [];
 if (!empty($products)) {

@@ -14,7 +14,7 @@ $unread_count = 0;
 $recent_messages = [];
 
 if (isset($pdo)) {
-    $stmt = $pdo->prepare("SELECT username, email FROM users WHERE id = ? LIMIT 1");
+    $stmt = $pdo->prepare("SELECT username, email FROM users WHERE uuid = ? LIMIT 1");
     $stmt->execute([$_SESSION['user_uuid']]);
     $user = $stmt->fetch();
     
