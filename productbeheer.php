@@ -51,11 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // --- 4. CATEGORIE VERWIJDEREN ---
 if (isset($_GET['delete_cat'])) {
-    // Verwijder eerst alle producten die aan deze categorie gekoppeld zijn
     $stmt_prod = $pdo->prepare("DELETE FROM products WHERE category_id = ?");
     $stmt_prod->execute([$_GET['delete_cat']]);
-    
-    // Verwijder daarna de categorie zelf
     $stmt_cat = $pdo->prepare("DELETE FROM categories WHERE uuid = ?");
     $stmt_cat->execute([$_GET['delete_cat']]);
     header("Location: productbeheer.php?msg=cat_deleted");

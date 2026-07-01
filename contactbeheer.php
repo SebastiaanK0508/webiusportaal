@@ -41,7 +41,7 @@ $contact_messages = $pdo->query("SELECT * FROM contact_messages ORDER BY created
 <html lang="nl">
 <head>
     <title>Contactbeheer - Beauty Touch by Nikki</title>
-    <?php include 'includes/beheerhead.php'; ?>
+    <?php include 'includes/head.php'; ?>
 </head>
 <body class="bg-gray-100 font-sans pb-24">
     <?php include 'includes/header.php'; ?>
