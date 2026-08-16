@@ -1,44 +1,64 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/init.php';
+require_login();
 
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['user_uuid'])) {
-    header('Location: login.php');
-    exit();
+$current_user_row = current_user();
+$admin_username = $current_user_row['username'] ?? 'Beheerder';
+$admin_email = !empty($current_user_row['email']) ? $current_user_row['email'] : 'Geen e-mailadres gekoppeld';
+
+$active_website = current_website();
+
+$switchable_websites = [];
+if (is_super_admin()) {
+    $switchable_websites = $pdo->query("SELECT id, company_name, domain_name FROM websites WHERE is_active = 1 ORDER BY company_name ASC")->fetchAll();
 }
-$admin_username = 'Beheerder';
-$admin_email = 'admin@beautytouchbynikki.nl';
 
 $unread_count = 0;
 $recent_messages = [];
-
-if (isset($pdo)) {
-    $stmt = $pdo->prepare("SELECT username, email FROM users WHERE uuid = ? LIMIT 1");
-    $stmt->execute([$_SESSION['user_uuid']]);
-    $user = $stmt->fetch();
-    
-    if ($user) {
-        $admin_username = $user['username'];
-        $admin_email = !empty($user['email']) ? $user['email'] : 'Geen e-mailadres gekoppeld';
-    }
-    
-    $table_name = 'contact_messages';     
+if (current_website_id()) {
     try {
-        $stmt_count = $pdo->query("SELECT COUNT(*) FROM {$table_name} WHERE is_read = 0");
+        $stmt_count = $pdo->prepare("SELECT COUNT(*) FROM contact_messages WHERE website_id = ? AND is_read = 0");
+        $stmt_count->execute([current_website_id()]);
         $unread_count = (int)$stmt_count->fetchColumn();
-        $stmt_msgs = $pdo->query("SELECT name, subject, created_at FROM {$table_name} WHERE is_read = 0 ORDER BY created_at DESC LIMIT 5");
+
+        $stmt_msgs = $pdo->prepare("SELECT name, subject, created_at FROM contact_messages WHERE website_id = ? AND is_read = 0 ORDER BY created_at DESC LIMIT 5");
+        $stmt_msgs->execute([current_website_id()]);
         $recent_messages = $stmt_msgs->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        error_log("Fout bij ophalen contactberichten: " . $e->getMessage());
+        error_log('Fout bij ophalen contactberichten: ' . $e->getMessage());
     }
 }
 ?>
-<head>
-    <?php include 'head.php'; ?>
-</head>
-
 <header class="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm transition-all duration-300">
+    <!-- IDENTITEITSSTRIP: welke klantwebsite wordt nu beheerd -->
+    <div class="bg-gray-50 border-b border-gray-100 px-4 sm:px-6 lg:px-8 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-2 text-gray-600 min-w-0">
+            <span class="text-gray-400">Je beheert nu:</span>
+            <?php if ($active_website): ?>
+                <?php if (!empty($active_website['logo_path'])): ?>
+                    <img src="<?php echo htmlspecialchars($active_website['logo_path']); ?>" class="h-4 w-4 rounded object-cover border border-gray-200 flex-shrink-0" alt="">
+                <?php endif; ?>
+                <span class="font-bold text-gray-800 truncate"><?php echo htmlspecialchars($active_website['company_name']); ?></span>
+                <span class="text-gray-400 truncate hidden sm:inline">(<?php echo htmlspecialchars($active_website['domain_name']); ?>)</span>
+            <?php else: ?>
+                <span class="italic text-amber-600">Nog geen website gekozen</span>
+            <?php endif; ?>
+        </div>
+        <?php if (is_super_admin()): ?>
+            <form method="POST" action="includes/switch_website.php" class="flex items-center gap-2">
+                <?php echo csrf_field(); ?>
+                <input type="hidden" name="return_to" value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI'] ?? 'beheer.php'); ?>">
+                <select name="website_id" onchange="this.form.submit()" class="text-xs border border-gray-300 rounded-md py-1 pl-2 pr-6 bg-white focus:ring-1 focus:ring-pink-500 focus:border-pink-500">
+                    <option value="">Wissel van website&hellip;</option>
+                    <?php foreach ($switchable_websites as $w): ?>
+                        <option value="<?php echo htmlspecialchars($w['id']); ?>" <?php echo ($w['id'] === current_website_id()) ? 'selected' : ''; ?>><?php echo htmlspecialchars($w['company_name']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <a href="super_websites.php" class="text-pink-600 hover:text-pink-700 font-bold whitespace-nowrap">Beheer websites</a>
+            </form>
+        <?php endif; ?>
+    </div>
+
     <div class="w-full px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
             <div class="flex items-center gap-8">
@@ -60,6 +80,12 @@ if (isset($pdo)) {
                             <a href="legalbeheer.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Juridische Documenten</a>
                             <div class="border-t border-gray-100 my-1"></div>
                             <a href="app_instellingen.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Algemene Instellingen</a>
+                            <?php if (is_super_admin()): ?>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <div class="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Super Admin</div>
+                                <a href="super_websites.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Klantwebsites Beheren</a>
+                                <a href="super_velden.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Velden Beheren</a>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </nav>
@@ -133,7 +159,7 @@ if (isset($pdo)) {
             </div>
         </div>
     </div>
-    
+
     <div id="mobile-menu" class="md:hidden absolute w-full bg-white border-b border-gray-200 shadow-xl overflow-y-auto transition-all duration-300 max-h-0 opacity-0 z-40">
         <div class="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -154,7 +180,7 @@ if (isset($pdo)) {
                 </svg>
             </a>
         </div>
-        
+
         <!-- MOBIEL ZOEKFILTER -->
         <div class="p-4 border-b border-gray-100">
             <form action="search.php" method="GET" class="relative w-full">
@@ -196,6 +222,14 @@ if (isset($pdo)) {
                 <a href="app_instellingen.php" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
                     <span class="w-1.5 h-1.5 rounded-full bg-gray-300 ml-1"></span> Algemene Instellingen
                 </a>
+                <?php if (is_super_admin()): ?>
+                    <a href="super_websites.php" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
+                        <span class="w-1.5 h-1.5 rounded-full bg-pink-300 ml-1"></span> Klantwebsites Beheren
+                    </a>
+                    <a href="super_velden.php" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
+                        <span class="w-1.5 h-1.5 rounded-full bg-pink-300 ml-1"></span> Velden Beheren
+                    </a>
+                <?php endif; ?>
             </div>
         </nav>
         <div class="p-4 border-t border-gray-100 bg-gray-50">
@@ -216,7 +250,7 @@ if (isset($pdo)) {
         btn.addEventListener('click', () => {
             isOpen = !isOpen;
             if (isOpen) {
-                menu.style.maxHeight = "2000px"; 
+                menu.style.maxHeight = "2000px";
                 menu.classList.remove('opacity-0');
                 menu.classList.add('opacity-100');
                 iconOpen.classList.add('hidden');

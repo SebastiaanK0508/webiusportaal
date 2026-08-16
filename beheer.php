@@ -1,19 +1,16 @@
 <?php
-session_start();
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['user_uuid'])) {
-    header('Location: login.php');
-    exit();
-}
-require_once 'includes/functions.php';
-$stmt = $pdo->prepare("SELECT username FROM users WHERE uuid = ? LIMIT 1");
-$stmt->execute([$_SESSION['user_uuid']]);
-$user = $stmt->fetch();
-$username = $user ? $user['username'] : 'Beheerder';
+require_once 'includes/init.php';
+require_website_context();
+
+$username = current_user()['username'] ?? 'Beheerder';
+$website = current_website();
+$site_label = $website['company_name'] ?? 'Webius Portaal';
+
 $stats = [
     'portfolio' => 0,
     'products'  => 0,
     'reviews'   => 0,
-    'messages'  => 0
+    'messages'  => 0,
 ];
 
 try {
@@ -27,7 +24,7 @@ try {
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <title>Dashboard - Beauty Touch by Nikki</title>
+    <title>Dashboard - Webius Portaal</title>
     <?php include 'includes/head.php'; ?>
 </head>
 <body class="bg-gray-100 font-sans pb-24">
@@ -35,7 +32,7 @@ try {
     <div class="max-w-6xl mx-auto px-4 mt-8">
         <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-800">Welkom terug, <?php echo htmlspecialchars($username); ?>! 👋</h1>
-            <p class="text-gray-500 mt-2">Dit is je overzicht. Kies een module om je website te beheren.</p>
+            <p class="text-gray-500 mt-2">Dit is je overzicht voor <strong><?php echo htmlspecialchars($site_label); ?></strong>. Kies een module om de website te beheren.</p>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex items-center gap-4 transition-transform hover:-translate-y-1 duration-300">
@@ -87,7 +84,7 @@ try {
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                         </div>
                         <h2 class="text-lg font-bold text-gray-800">Snelkoppelingen Beheer</h2>
-                    </div>                    
+                    </div>
                     <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <a href="websitebeheer.php?tab=portfolio" class="group flex items-start p-5 border border-gray-200 rounded-xl hover:border-pink-500 hover:shadow-md transition-all duration-300 bg-white">
                             <div class="p-3 bg-gray-50 rounded-lg group-hover:bg-pink-50 group-hover:text-pink-600 transition-colors mr-4 text-gray-600">
@@ -95,7 +92,7 @@ try {
                             </div>
                             <div>
                                 <h3 class="text-md font-bold text-gray-900 group-hover:text-pink-600 transition-colors">Portfolio</h3>
-                                <p class="text-sm text-gray-500 mt-1">Foto's toevoegen of verwijderen uit je inspiratie galerij.</p>
+                                <p class="text-sm text-gray-500 mt-1">Foto's toevoegen of verwijderen uit de inspiratie galerij.</p>
                             </div>
                         </a>
                         <a href="productbeheer.php" class="group flex items-start p-5 border border-gray-200 rounded-xl hover:border-pink-500 hover:shadow-md transition-all duration-300 bg-white">
@@ -104,7 +101,7 @@ try {
                             </div>
                             <div>
                                 <h3 class="text-md font-bold text-gray-900 group-hover:text-pink-600 transition-colors">Behandelingen</h3>
-                                <p class="text-sm text-gray-500 mt-1">Beheer je diensten, beschrijvingen en de tarievenlijst.</p>
+                                <p class="text-sm text-gray-500 mt-1">Beheer diensten, beschrijvingen en de tarievenlijst.</p>
                             </div>
                         </a>
                         <a href="legalbeheer.php" class="group flex items-start p-5 border border-gray-200 rounded-xl hover:border-pink-500 hover:shadow-md transition-all duration-300 bg-white">
@@ -113,7 +110,7 @@ try {
                             </div>
                             <div>
                                 <h3 class="text-md font-bold text-gray-900 group-hover:text-pink-600 transition-colors">Legals</h3>
-                                <p class="text-sm text-gray-500 mt-1">Beheer je Juridische teksten aan.</p>
+                                <p class="text-sm text-gray-500 mt-1">Beheer de juridische teksten.</p>
                             </div>
                         </a>
                         <a href="websitebeheer.php" class="group flex items-start p-5 border border-gray-200 rounded-xl hover:border-pink-500 hover:shadow-md transition-all duration-300 bg-white">
@@ -151,7 +148,7 @@ try {
                                 <span class="w-2.5 h-2.5 bg-pink-500 rounded-full shadow-[0_0_8px_rgba(236,72,153,0.6)]"></span>
                                 <span class="text-sm font-medium text-gray-700">Versie CMS</span>
                             </div>
-                            <span class="text-xs font-bold text-gray-900">Winegum v1.0</span>
+                            <span class="text-xs font-bold text-gray-900">Webius Portaal v2.0</span>
                         </div>
                     </div>
                 </div>
@@ -161,7 +158,7 @@ try {
                     </div>
                     <h3 class="text-lg font-bold mb-2 relative z-10">Mijn Profiel</h3>
                     <p class="text-slate-300 text-sm mb-5 relative z-10">Je kunt je gebruikersnaam, e-mailadres en wachtwoord veilig aanpassen in je profiel instellingen.</p>
-                    <a href="profiel.php" class="inline-flex items-center gap-2 text-sm font-bold bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors relative z-10 text-white">
+                    <a href="profielbeheer.php" class="inline-flex items-center gap-2 text-sm font-bold bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors relative z-10 text-white">
                         Profiel beheren
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </a>

@@ -1,34 +1,48 @@
 <?php
-session_start();
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_SESSION['user_uuid'])) {
-    header('Location: login.php');
-    exit();
-}
-include 'includes/init.php';
+require_once 'includes/init.php';
+$website_id = require_website_context();
+
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'tab-voorwaarden';
 $message = '';
 
 if (isset($_POST['update_legal'])) {
+    csrf_verify();
     $type = $_POST['legal_type'];
-    $title = $_POST['legal_title'];
-    $content = $_POST['legal_content']; 
-    
-    $stmt = $pdo->prepare("UPDATE legals SET title = ?, content = ? WHERE type = ?");
-    $stmt->execute([$title, $content, $type]);
-    
+    $title = trim($_POST['legal_title'] ?? '');
+    $content = $_POST['legal_content'] ?? '';
+
+    $stmt = $pdo->prepare("SELECT id FROM legals WHERE website_id = ? AND type = ?");
+    $stmt->execute([$website_id, $type]);
+    if ($stmt->fetchColumn()) {
+        $stmt = $pdo->prepare("UPDATE legals SET title = ?, content = ? WHERE website_id = ? AND type = ?");
+        $stmt->execute([$title, $content, $website_id, $type]);
+    } else {
+        $stmt = $pdo->prepare("INSERT INTO legals (id, website_id, type, title, content) VALUES (UUID(), ?, ?, ?, ?)");
+        $stmt->execute([$website_id, $type, $title, $content]);
+    }
+
     $message = "Document succesvol bijgewerkt!";
+    $active_tab = 'tab-' . $type;
 }
 
-$voorwaarden = $pdo->query("SELECT * FROM legals WHERE type = 'voorwaarden'")->fetch();
-$privacy = $pdo->query("SELECT * FROM legals WHERE type = 'privacy'")->fetch();
-$cookies = $pdo->query("SELECT * FROM legals WHERE type = 'cookies'")->fetch();
+$voorwaarden_stmt = $pdo->prepare("SELECT * FROM legals WHERE website_id = ? AND type = 'voorwaarden'");
+$voorwaarden_stmt->execute([$website_id]);
+$voorwaarden = $voorwaarden_stmt->fetch();
+
+$privacy_stmt = $pdo->prepare("SELECT * FROM legals WHERE website_id = ? AND type = 'privacy'");
+$privacy_stmt->execute([$website_id]);
+$privacy = $privacy_stmt->fetch();
+
+$cookies_stmt = $pdo->prepare("SELECT * FROM legals WHERE website_id = ? AND type = 'cookies'");
+$cookies_stmt->execute([$website_id]);
+$cookies = $cookies_stmt->fetch();
 ?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <title>Juridisch Beheer - <?php echo htmlspecialchars('hero_title')?> </title>
+    <title>Juridisch Beheer - <?php echo htmlspecialchars(current_website()['company_name'] ?? 'Webius Portaal'); ?></title>
     <?php include 'includes/head.php'; ?>
-    
+
 <script src="https://cdn.ckeditor.com/ckeditor5/41.1.0/classic/ckeditor.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
@@ -40,12 +54,12 @@ $cookies = $pdo->query("SELECT * FROM legals WHERE type = 'cookies'")->fetch();
 </head>
 <body class="bg-gray-100 font-sans pb-24">
     <?php include 'includes/header.php'; ?>
-    
+
     <div class="max-w-6xl mx-auto px-4 mt-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-gray-800">Juridische Documenten</h1>
-                <p class="text-gray-500 mt-1">Beheer hier je algemene voorwaarden, privacybeleid en cookiebeleid.</p>
+                <p class="text-gray-500 mt-1">Beheer hier de algemene voorwaarden, het privacybeleid en het cookiebeleid.</p>
             </div>
             <div class="flex gap-3">
                 <a href="websitebeheer.php" class="text-gray-600 hover:text-gray-900 font-bold bg-white px-6 py-2 rounded-full shadow border border-gray-200 transition-all">&larr; Terug naar Websitebeheer</a>
@@ -54,7 +68,7 @@ $cookies = $pdo->query("SELECT * FROM legals WHERE type = 'cookies'")->fetch();
 
         <?php if ($message): ?>
             <div id="alert-message" class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 shadow-sm rounded-r-lg flex justify-between items-center transition-opacity duration-500">
-                <span class="font-medium"><?php echo $message; ?></span>
+                <span class="font-medium"><?php echo htmlspecialchars($message); ?></span>
                 <button onclick="document.getElementById('alert-message').style.display='none'" class="text-green-700 hover:text-green-900 font-bold ml-4 focus:outline-none text-xl leading-none">
                     &times;
                 </button>
@@ -64,14 +78,14 @@ $cookies = $pdo->query("SELECT * FROM legals WHERE type = 'cookies'")->fetch();
                     const alert = document.getElementById('alert-message');
                     if (alert) {
                         alert.classList.add('opacity-0');
-                        setTimeout(() => alert.style.display = 'none', 500); 
+                        setTimeout(() => alert.style.display = 'none', 500);
                     }
                 }, 4000);
             </script>
         <?php endif; ?>
         <div class="border-b border-gray-200 mb-6 bg-white rounded-t-xl shadow-sm overflow-x-auto">
             <nav class="-mb-px flex space-x-6 px-4">
-                <?php 
+                <?php
                 $tabs = [
                     'tab-voorwaarden' => 'Algemene Voorwaarden',
                     'tab-privacy' => 'Privacybeleid',
@@ -91,6 +105,7 @@ $cookies = $pdo->query("SELECT * FROM legals WHERE type = 'cookies'")->fetch();
         <!-- ================= TAB 1: ALGEMENE VOORWAARDEN ================= -->
         <div id="tab-voorwaarden" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'tab-voorwaarden' ? 'hidden' : ''; ?>">
             <form method="POST" action="legalbeheer.php?tab=tab-voorwaarden">
+                <?php echo csrf_field(); ?>
                 <input type="hidden" name="legal_type" value="voorwaarden">
                 <div class="flex justify-between items-center mb-6 border-b pb-4">
                     <h2 class="text-2xl font-bold text-gray-800">Algemene Voorwaarden</h2>
@@ -110,6 +125,7 @@ $cookies = $pdo->query("SELECT * FROM legals WHERE type = 'cookies'")->fetch();
         <!-- ================= TAB 2: PRIVACYBELEID ================= -->
         <div id="tab-privacy" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'tab-privacy' ? 'hidden' : ''; ?>">
             <form method="POST" action="legalbeheer.php?tab=tab-privacy">
+                <?php echo csrf_field(); ?>
                 <input type="hidden" name="legal_type" value="privacy">
                 <div class="flex justify-between items-center mb-6 border-b pb-4">
                     <h2 class="text-2xl font-bold text-gray-800">Privacybeleid</h2>
@@ -129,6 +145,7 @@ $cookies = $pdo->query("SELECT * FROM legals WHERE type = 'cookies'")->fetch();
         <!-- ================= TAB 3: COOKIEBELEID ================= -->
         <div id="tab-cookies" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'tab-cookies' ? 'hidden' : ''; ?>">
             <form method="POST" action="legalbeheer.php?tab=tab-cookies">
+                <?php echo csrf_field(); ?>
                 <input type="hidden" name="legal_type" value="cookies">
                 <div class="flex justify-between items-center mb-6 border-b pb-4">
                     <h2 class="text-2xl font-bold text-gray-800">Cookiebeleid</h2>
