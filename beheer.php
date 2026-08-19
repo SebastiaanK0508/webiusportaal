@@ -148,7 +148,7 @@ try {
                                 <span class="w-2.5 h-2.5 bg-pink-500 rounded-full shadow-[0_0_8px_rgba(236,72,153,0.6)]"></span>
                                 <span class="text-sm font-medium text-gray-700">Versie CMS</span>
                             </div>
-                            <span class="text-xs font-bold text-gray-900">Webius Portaal v2.0</span>
+                            <span class="text-xs font-bold text-gray-900">Oreo v2.0</span>
                         </div>
                     </div>
                 </div>
