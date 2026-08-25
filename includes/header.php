@@ -8,6 +8,18 @@ $admin_email = !empty($current_user_row['email']) ? $current_user_row['email'] :
 
 $active_website = current_website();
 
+// Welke van de 5 site-specifieke modules staan aan voor de huidige website —
+// bepaalt zowel welke navlinks verschijnen als (elders, in elke module-
+// beheerpagina zelf) of die pagina daadwerkelijk toegankelijk is.
+$enabled_modules = current_website_id() ? get_enabled_modules(current_website_id()) : [];
+$module_pages = [
+    'assortiment'   => ['label' => 'Assortiment',   'href' => 'assortimentbeheer.php'],
+    'cadeaukaarten' => ['label' => 'Cadeaukaarten', 'href' => 'cadeaukaartenbeheer.php'],
+    'nieuws'        => ['label' => 'Nieuws',        'href' => 'nieuwsbeheer.php'],
+    'prijsvraag'    => ['label' => 'Prijsvraag',    'href' => 'prijsvraagbeheer.php'],
+    'geschiedenis'  => ['label' => 'Geschiedenis',  'href' => 'geschiedenisbeheer.php'],
+];
+
 $switchable_websites = [];
 if (is_super_admin()) {
     $switchable_websites = $pdo->query("SELECT id, company_name, domain_name FROM websites WHERE is_active = 1 ORDER BY company_name ASC")->fetchAll();
@@ -64,30 +76,65 @@ if (current_website_id()) {
             <div class="flex items-center gap-8">
                 <nav class="hidden md:flex space-x-1 lg:space-x-2 items-center">
                     <a href="beheer.php" class="px-3 py-2 rounded-md text-gray-600 hover:text-pink-600 hover:bg-pink-50 font-medium text-sm transition-all duration-200">Dashboard</a>
-                    <a href="websitebeheer.php" class="px-3 py-2 rounded-md text-gray-600 hover:text-pink-600 hover:bg-pink-50 font-medium text-sm transition-all duration-200">Homepagina</a>
-                    <a href="productbeheer.php" class="px-3 py-2 rounded-md text-gray-600 hover:text-pink-600 hover:bg-pink-50 font-medium text-sm transition-all duration-200">Prijspagina</a>
-                    <a href="contactbeheer.php" class="px-3 py-2 rounded-md text-gray-600 hover:text-pink-600 hover:bg-pink-50 font-medium text-sm transition-all duration-200">Contactpagina</a>
+
+                    <!-- PAGINA'S: alle content die bezoekers op de website zien — vaste
+                         pagina's die elke site heeft, plus (indien ingeschakeld) de
+                         site-specifieke modules. Bewust samen in één menu: het zijn voor
+                         de gebruiker allemaal "pagina's die ik kan bewerken". -->
                     <div class="relative group">
                         <button class="flex items-center gap-1 px-3 py-2 rounded-md text-gray-600 hover:text-pink-600 hover:bg-pink-50 font-medium text-sm transition-all duration-200 focus:outline-none">
-                            Weergave & Info
+                            Pagina's
                             <svg class="h-4 w-4 mt-0.5 transition-transform duration-200 group-hover:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
                         <div class="absolute left-0 mt-0 w-56 bg-white rounded-lg shadow-xl border border-gray-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-left z-50 translate-y-2 group-hover:translate-y-0">
-                            <div class="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Website Instellingen</div>
-                            <a href="footerbeheer.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Footer & Socials</a>
-                            <a href="legalbeheer.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Juridische Documenten</a>
-                            <div class="border-t border-gray-100 my-1"></div>
-                            <a href="app_instellingen.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Algemene Instellingen</a>
-                            <?php if (is_super_admin()): ?>
+                            <div class="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Vaste pagina's</div>
+                            <a href="websitebeheer.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Homepagina</a>
+                            <a href="productbeheer.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Prijspagina</a>
+                            <a href="contactbeheer.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Contactpagina</a>
+                            <?php if (!empty($enabled_modules)): ?>
                                 <div class="border-t border-gray-100 my-1"></div>
-                                <div class="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Super Admin</div>
-                                <a href="super_websites.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Klantwebsites Beheren</a>
-                                <a href="super_velden.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Velden Beheren</a>
+                                <div class="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Site-specifiek</div>
+                                <?php foreach ($module_pages as $key => $page): if (!in_array($key, $enabled_modules, true)) continue; ?>
+                                    <a href="<?php echo htmlspecialchars($page['href']); ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors"><?php echo htmlspecialchars($page['label']); ?></a>
+                                <?php endforeach; ?>
                             <?php endif; ?>
                         </div>
                     </div>
+
+                    <!-- INSTELLINGEN: configuratie van de huidige website, geen content
+                         die bezoekers direct als "pagina" zien. -->
+                    <div class="relative group">
+                        <button class="flex items-center gap-1 px-3 py-2 rounded-md text-gray-600 hover:text-pink-600 hover:bg-pink-50 font-medium text-sm transition-all duration-200 focus:outline-none">
+                            Instellingen
+                            <svg class="h-4 w-4 mt-0.5 transition-transform duration-200 group-hover:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div class="absolute left-0 mt-0 w-56 bg-white rounded-lg shadow-xl border border-gray-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-left z-50 translate-y-2 group-hover:translate-y-0">
+                            <a href="footerbeheer.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Footer & Socials</a>
+                            <a href="legalbeheer.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Juridische Documenten</a>
+                            <a href="app_instellingen.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Algemene Instellingen</a>
+                        </div>
+                    </div>
+
+                    <!-- PLATFORM: alleen voor super admins — beheer over de klantwebsites
+                         zelf, los van het bewerken van één specifieke website. -->
+                    <?php if (is_super_admin()): ?>
+                    <div class="relative group">
+                        <button class="flex items-center gap-1 px-3 py-2 rounded-md text-gray-600 hover:text-pink-600 hover:bg-pink-50 font-medium text-sm transition-all duration-200 focus:outline-none">
+                            Platform
+                            <svg class="h-4 w-4 mt-0.5 transition-transform duration-200 group-hover:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div class="absolute left-0 mt-0 w-56 bg-white rounded-lg shadow-xl border border-gray-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-left z-50 translate-y-2 group-hover:translate-y-0">
+                            <a href="super_websites.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Klantwebsites Beheren</a>
+                            <a href="super_velden.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors">Velden Beheren</a>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </nav>
             </div>
             <div class="flex-1 flex justify-center px-6 hidden lg:flex">
@@ -143,7 +190,7 @@ if (current_website_id()) {
                     </button>
                     <div class="absolute right-0 mt-0 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right translate-y-2 group-hover:translate-y-0 z-50">
                         <a href="profielbeheer.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mijn Profiel</a>
-                        <a href="app_instellingen.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Instellingen</a>
+                        <a href="app_instellingen.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Algemene Instellingen</a>
                         <div class="border-t border-gray-100 mt-1"></div>
                         <a href="includes/logout.php" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">Uitloggen</a>
                     </div>
@@ -197,22 +244,34 @@ if (current_website_id()) {
             <a href="beheer.php" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
                 Dashboard
             </a>
-            <a href="websitebeheer.php" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
-                Homepagina
-            </a>
-            <a href="productbeheer.php" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
-                Prijzen
-            </a>
-            <a href="contactbeheer.php" class="flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
-                <div class="flex items-center gap-3">
-                    Contactpagina
-                </div>
-                <?php if($unread_count > 0): ?>
-                    <span class="bg-pink-100 text-pink-600 py-0.5 px-2 rounded-full text-xs font-bold"><?php echo $unread_count; ?> Nieuw</span>
-                <?php endif; ?>
-            </a>
+
             <div class="mt-4 pt-4 border-t border-gray-100">
-                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Weergave & Info</p>
+                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Vaste pagina's</p>
+                <a href="websitebeheer.php" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
+                    <span class="w-1.5 h-1.5 rounded-full bg-gray-300 ml-1"></span> Homepagina
+                </a>
+                <a href="productbeheer.php" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
+                    <span class="w-1.5 h-1.5 rounded-full bg-gray-300 ml-1"></span> Prijspagina
+                </a>
+                <a href="contactbeheer.php" class="flex items-center justify-between px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
+                    <span class="flex items-center gap-3"><span class="w-1.5 h-1.5 rounded-full bg-gray-300 ml-1"></span> Contactpagina</span>
+                    <?php if($unread_count > 0): ?>
+                        <span class="bg-pink-100 text-pink-600 py-0.5 px-2 rounded-full text-xs font-bold"><?php echo $unread_count; ?> Nieuw</span>
+                    <?php endif; ?>
+                </a>
+            </div>
+            <?php if (!empty($enabled_modules)): ?>
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Site-specifiek</p>
+                <?php foreach ($module_pages as $key => $page): if (!in_array($key, $enabled_modules, true)) continue; ?>
+                    <a href="<?php echo htmlspecialchars($page['href']); ?>" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
+                        <span class="w-1.5 h-1.5 rounded-full bg-gray-300 ml-1"></span> <?php echo htmlspecialchars($page['label']); ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Instellingen</p>
                 <a href="footerbeheer.php" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
                     <span class="w-1.5 h-1.5 rounded-full bg-gray-300 ml-1"></span> Footer & Socials
                 </a>
@@ -222,15 +281,18 @@ if (current_website_id()) {
                 <a href="app_instellingen.php" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
                     <span class="w-1.5 h-1.5 rounded-full bg-gray-300 ml-1"></span> Algemene Instellingen
                 </a>
-                <?php if (is_super_admin()): ?>
-                    <a href="super_websites.php" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
-                        <span class="w-1.5 h-1.5 rounded-full bg-pink-300 ml-1"></span> Klantwebsites Beheren
-                    </a>
-                    <a href="super_velden.php" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
-                        <span class="w-1.5 h-1.5 rounded-full bg-pink-300 ml-1"></span> Velden Beheren
-                    </a>
-                <?php endif; ?>
             </div>
+            <?php if (is_super_admin()): ?>
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Platform</p>
+                <a href="super_websites.php" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
+                    <span class="w-1.5 h-1.5 rounded-full bg-pink-300 ml-1"></span> Klantwebsites Beheren
+                </a>
+                <a href="super_velden.php" class="flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-colors">
+                    <span class="w-1.5 h-1.5 rounded-full bg-pink-300 ml-1"></span> Velden Beheren
+                </a>
+            </div>
+            <?php endif; ?>
         </nav>
         <div class="p-4 border-t border-gray-100 bg-gray-50">
             <a href="profielbeheer.php" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors">Mijn Profiel Instellingen</a>

@@ -281,7 +281,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
         </div>
 
         <!-- ALGEMENE TEKSTEN TAB -->
-        <div id="algemeen" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6">
+        <div id="algemeen" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'algemeen' ? 'hidden' : ''; ?>">
             <form method="POST" action="websitebeheer.php?tab=<?php echo $active_tab; ?>">
                 <?php echo csrf_field(); ?>
                 <div class="flex justify-between items-center mb-8 border-b pb-4">
@@ -383,7 +383,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
         </div>
 
         <!-- AFBEELDINGEN TAB -->
-        <div id="images" class="tab-content hidden bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6">
+        <div id="images" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'images' ? 'hidden' : ''; ?>">
             <form method="POST" action="websitebeheer.php?tab=<?php echo $active_tab; ?>" enctype="multipart/form-data">
                 <?php echo csrf_field(); ?>
                 <div class="flex justify-between items-center mb-8 border-b pb-4">
@@ -423,7 +423,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
         </div>
 
         <!-- PRODUCTEN TAB -->
-        <div id="producten" class="tab-content hidden bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6">
+        <div id="producten" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'producten' ? 'hidden' : ''; ?>">
             <form method="POST" action="websitebeheer.php?tab=producten">
                 <?php echo csrf_field(); ?>
                 <div class="flex justify-between items-center mb-6 border-b pb-4">
@@ -466,7 +466,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
         </div>
 
         <!-- PORTFOLIO TAB -->
-        <div id="portfolio" class="tab-content hidden bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6">
+        <div id="portfolio" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'portfolio' ? 'hidden' : ''; ?>">
             <div class="grid md:grid-cols-3 gap-6 mb-10">
                 <?php foreach ($all_portfolio as $port): ?>
                     <div class="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden flex flex-col shadow-sm">
@@ -498,7 +498,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
         </div>
 
         <!-- USPS TAB -->
-        <div id="usps" class="tab-content hidden bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6">
+        <div id="usps" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'usps' ? 'hidden' : ''; ?>">
             <div class="grid md:grid-cols-3 gap-4 mb-10">
                 <?php foreach ($all_usps as $usp): ?>
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 relative pt-8 mt-4">
@@ -528,7 +528,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
         </div>
 
         <!-- REVIEWS TAB -->
-        <div id="reviews" class="tab-content hidden bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6">
+        <div id="reviews" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'reviews' ? 'hidden' : ''; ?>">
             <div class="grid md:grid-cols-2 gap-4 mb-10">
                 <?php foreach ($all_reviews as $review): ?>
                     <?php $stars = isset($review['stars']) ? (int)$review['stars'] : 5; ?>
@@ -567,7 +567,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
         </div>
 
         <!-- FAQ TAB -->
-        <div id="faq" class="tab-content hidden bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6">
+        <div id="faq" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'faq' ? 'hidden' : ''; ?>">
             <div class="space-y-4 mb-10">
                 <?php foreach ($all_faqs as $faq): ?>
                     <div class="bg-white border border-gray-200 p-4 rounded-lg flex justify-between items-start">
@@ -594,13 +594,5 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
             </form>
         </div>
     </div>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const activeTab = "<?php echo $active_tab; ?>";
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        const el = document.getElementById(activeTab);
-        if (el) el.classList.remove('hidden');
-    });
-</script>
 </body>
 </html>

@@ -28,6 +28,44 @@ volgorde.
    (het scherm waarmee een super admin nieuwe tags/keys/velden kan toevoegen
    aan de content-instellingen en aan producten/portfolio/USP's/reviews/FAQ's).
    Veilig, additief, geen bestaande data wordt aangeraakt.
+6. **`005_website_modules.sql`** — voegt `website_modules` toe: het schakelbord
+   waarmee per website wordt bepaald welke site-specifieke modules (assortiment,
+   cadeaukaarten, nieuws, prijsvraag, geschiedenis) actief zijn. Dit is het
+   mechanisme achter "pagina's die alleen voor deze website zijn" — een module
+   die uit staat, is nergens in de navigatie zichtbaar en de bijbehorende
+   beheerpagina (bijv. `assortimentbeheer.php`) weigert toegang. Veilig,
+   additief; zet meteen alle 5 modules aan voor debandijk en uit voor overige
+   websites.
+7. **`006_module_tables.sql`** — voegt de tabellen toe voor die vijf modules.
+   **Let op:** dit script laat eerst `assortiment_merken`, `prijsvraag_inzendingen`
+   en `opening_hours` vallen — die tabellen bestonden al in deze database maar
+   waren leeg en hadden een foreign key naar een tabel die niet bestond (een
+   restant van een eerdere, afgebroken poging). Geverifieerd leeg vóór het
+   schrijven van dit script; er gaat geen data verloren.
+8. **`007_migrate_debandijk_data.php`** — kopieert de bestaande content van
+   debandijk's oude, losse `debandijk`-database naar de nieuwe module-tabellen
+   hierboven (assortiment, cadeaukaarten, nieuws, prijsvraag, openingstijden,
+   geschiedenis, contactberichten en de beheerders-accounts Cindy/Rene — het
+   account Sebastiaan bestond al). **Niet idempotent — draai dit precies één
+   keer.** Vereist een `website_id`:
+   ```
+   php migrate/007_migrate_debandijk_data.php <website_id-van-debandijk>
+   ```
+   Print aan het eind een samenvatting én een waarschuwing voor eventuele
+   nieuw aangemaakte gebruikers met een placeholder-e-mailadres — die moeten
+   via `profielbeheer.php` naar een echt adres worden bijgewerkt (nodig voor
+   de wachtwoord-vergeten-flow).
+9. **Handmatige stap — uploads-symlink.** debandijk en webiusportaal zijn
+   aparte document roots op dezelfde server. Nieuw geüploade afbeeldingen
+   (via de nieuwe beheerpagina's) staan in `webiusportaal/uploads/{website_id}/`,
+   maar debandijk's publieke pagina's laden afbeeldingen relatief vanuit hun
+   eigen document root. Zonder deze stap 404'en die afbeeldingen op de
+   publieke site:
+   ```
+   cd debandijk && ln -s ../webiusportaal/uploads uploads
+   ```
+   Herhaal dit ook op productie (of vervang het door een kopieerstap als
+   productie ooit gescheiden hosting-accounts voor de twee repo's gebruikt).
 
 ## Na de migratie
 
@@ -35,6 +73,14 @@ volgorde.
   `websitebeheer.php` de bestaande content laten zien.
 - Test de super_admin-siteswitcher pas als er via `super_websites.php` een
   tweede (test)website is aangemaakt.
+- Controleer de vijf nieuwe modulepagina's (`assortimentbeheer.php`,
+  `cadeaukaartenbeheer.php`, `nieuwsbeheer.php`, `prijsvraagbeheer.php`,
+  `geschiedenisbeheer.php`) tonen de gemigreerde data, en dat ze **niet**
+  bereikbaar zijn (403) zodra hun module in `super_websites.php` wordt
+  uitgeschakeld voor een website.
+- Controleer dat `debandijk/beheer/` (de oude admin, los van dit alles) nog
+  ongewijzigd werkt — deze migratie leest de oude `debandijk`-database
+  precies één keer en verandert er verder niets aan.
 - Verwijder of verplaats deze `migrate/`-map niet uit git totdat de migratie
   succesvol is uitgevoerd — de scripts zijn ook nuttig als referentie mocht
   er iets misgaan.

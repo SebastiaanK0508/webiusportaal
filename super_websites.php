@@ -77,6 +77,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_website') {
             $stmt = $pdo->prepare("INSERT INTO websites (id, domain_name, company_name, template_key, logo_path, color_primary, color_secondary, color_accent, font_family, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)");
             $stmt->execute([$new_id, $domain, $company, $template_key, $logo_path, $primary ?: null, $secondary ?: null, $accent ?: null, $font]);
             provision_website($pdo, $new_id);
+            set_website_modules($new_id, $_POST['modules'] ?? []);
             $message = "Website '{$company}' is aangemaakt.";
         }
     }
@@ -115,6 +116,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_website') {
             }
             $stmt = $pdo->prepare("UPDATE websites SET domain_name = ?, company_name = ?, template_key = ?, color_primary = ?, color_secondary = ?, color_accent = ?, font_family = ?, is_active = ? WHERE id = ?");
             $stmt->execute([$domain, $company, $template_key, $primary ?: null, $secondary ?: null, $accent ?: null, $font, $is_active, $id]);
+            set_website_modules($id, $_POST['modules'] ?? []);
             $message = "Website bijgewerkt.";
         }
     }
@@ -177,6 +179,10 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_user') {
 }
 
 $websites = $pdo->query("SELECT * FROM websites ORDER BY company_name ASC")->fetchAll();
+$website_modules_map = [];
+foreach ($pdo->query("SELECT website_id, module_key FROM website_modules WHERE is_enabled = 1")->fetchAll() as $row) {
+    $website_modules_map[$row['website_id']][] = $row['module_key'];
+}
 $users = $pdo->query("
     SELECT u.*, w.company_name
     FROM users u
@@ -198,6 +204,12 @@ $users = $pdo->query("
             <p class="text-gray-500 mt-1">Voeg klantwebsites toe en beheer wie er toegang toe heeft. Alleen zichtbaar voor super admins.</p>
         </div>
 
+        <?php if (isset($_GET['select'])): ?>
+            <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 mb-6 shadow-sm rounded-r-lg flex items-center gap-3">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span class="font-medium">Kies eerst een website via de schakelaar hierboven om verder te gaan, of maak hieronder een nieuwe website aan.</span>
+            </div>
+        <?php endif; ?>
         <?php if ($error): ?>
             <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 shadow-sm rounded-r-lg"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
@@ -262,6 +274,17 @@ $users = $pdo->query("
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Logo (optioneel)</label>
                             <input type="file" name="logo" accept="image/jpeg,image/png,image/webp,image/gif" class="w-full text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Modules (site-specifieke pagina's)</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <?php foreach (AVAILABLE_MODULES as $key => $label): ?>
+                                    <label class="inline-flex items-center gap-2 cursor-pointer text-sm">
+                                        <input type="checkbox" name="modules[]" value="<?php echo htmlspecialchars($key); ?>" class="rounded border-gray-300 text-pink-600 focus:ring-pink-500">
+                                        <?php echo htmlspecialchars($label); ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                         <button type="submit" class="w-full bg-pink-600 text-white font-bold py-2.5 px-4 rounded-lg hover:bg-pink-700 transition-colors">Website Toevoegen</button>
                     </form>
@@ -337,6 +360,18 @@ $users = $pdo->query("
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 mb-1">Nieuw logo uploaden (optioneel)</label>
                                                 <input type="file" name="logo" accept="image/jpeg,image/png,image/webp,image/gif" class="w-full text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">Modules (site-specifieke pagina's)</label>
+                                                <div class="grid grid-cols-2 gap-2">
+                                                    <?php $w_modules = $website_modules_map[$w['id']] ?? []; ?>
+                                                    <?php foreach (AVAILABLE_MODULES as $key => $label): ?>
+                                                        <label class="inline-flex items-center gap-2 cursor-pointer text-sm">
+                                                            <input type="checkbox" name="modules[]" value="<?php echo htmlspecialchars($key); ?>" <?php echo in_array($key, $w_modules, true) ? 'checked' : ''; ?> class="rounded border-gray-300 text-pink-600 focus:ring-pink-500">
+                                                            <?php echo htmlspecialchars($label); ?>
+                                                        </label>
+                                                    <?php endforeach; ?>
+                                                </div>
                                             </div>
                                             <label class="inline-flex items-center gap-2 cursor-pointer">
                                                 <input type="checkbox" name="is_active" value="1" <?php echo $w['is_active'] ? 'checked' : ''; ?> class="rounded border-gray-300 text-pink-600 focus:ring-pink-500">

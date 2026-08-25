@@ -174,8 +174,8 @@ $contact_messages = $contact_messages_stmt->fetchAll();
                                     "id" => $msg['id'],
                                     "name" => htmlspecialchars($msg['name']),
                                     "email" => htmlspecialchars($msg['email']),
-                                    "phone" => htmlspecialchars($msg['phone']),
-                                    "subject" => htmlspecialchars($msg['subject']),
+                                    "phone" => htmlspecialchars($msg['phone'] ?? ''),
+                                    "subject" => htmlspecialchars($msg['subject'] ?? ''),
                                     "message" => htmlspecialchars($msg['message']),
                                     "date" => date('d-m-Y H:i', strtotime($msg['created_at']))
                                 ], JSON_HEX_APOS | JSON_HEX_QUOT); ?>)'

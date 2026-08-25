@@ -43,15 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="nl">
 <head>
     <title>Nieuw wachtwoord instellen - Webius Portaal</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Montserrat', sans-serif; }
-    </style>
+    <?php include 'includes/head.php'; ?>
 </head>
-<body class="bg-gray-50 flex items-center justify-center min-h-screen relative overflow-hidden">
+<body class="bg-gray-50 font-sans flex items-center justify-center min-h-screen relative overflow-hidden">
     <div class="absolute top-0 left-0 w-full h-96 bg-pink-600 transform -skew-y-6 origin-top-left -z-10 shadow-xl opacity-90"></div>
     <div class="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 relative z-10">
         <div class="text-center mb-8">

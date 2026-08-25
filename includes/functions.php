@@ -150,6 +150,64 @@ function is_toggled($key)
     return get_app_setting($key, '0') === '1';
 }
 
+// De vijf site-specifieke modules. Wijzig hier de lijst wanneer er ooit een
+// module bijkomt/vervalt — super_websites.php en de migraties lezen deze
+// sleutels niet dynamisch uit, dus die moeten in dat geval mee-updaten.
+const AVAILABLE_MODULES = [
+    'assortiment'   => 'Assortiment',
+    'cadeaukaarten' => 'Cadeaukaarten',
+    'nieuws'        => 'Nieuws',
+    'prijsvraag'    => 'Prijsvraag',
+    'geschiedenis'  => 'Geschiedenis',
+];
+
+function module_enabled(string $website_id, string $module_key): bool
+{
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT is_enabled FROM website_modules WHERE website_id = ? AND module_key = ?");
+    $stmt->execute([$website_id, $module_key]);
+    return (int)$stmt->fetchColumn() === 1;
+}
+
+function get_enabled_modules(string $website_id): array
+{
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT module_key FROM website_modules WHERE website_id = ? AND is_enabled = 1");
+    $stmt->execute([$website_id]);
+    return $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
+// Zorgt dat een website precies de 5 module-rijen heeft (nieuw aangemaakte
+// sites hadden ze nog niet). Bestaande rijen blijven ongemoeid.
+function ensure_website_modules(string $website_id): void
+{
+    global $pdo;
+    $stmt = $pdo->prepare("INSERT IGNORE INTO website_modules (website_id, module_key, is_enabled) VALUES (?, ?, 0)");
+    foreach (array_keys(AVAILABLE_MODULES) as $key) {
+        $stmt->execute([$website_id, $key]);
+    }
+}
+
+function set_website_modules(string $website_id, array $enabled_keys): void
+{
+    global $pdo;
+    $stmt = $pdo->prepare("INSERT INTO website_modules (website_id, module_key, is_enabled) VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE is_enabled = VALUES(is_enabled)");
+    foreach (array_keys(AVAILABLE_MODULES) as $key) {
+        $stmt->execute([$website_id, $key, in_array($key, $enabled_keys, true) ? 1 : 0]);
+    }
+}
+
+// Gate voor de vijf module-beheerpagina's: server-side check, onafhankelijk
+// van of de navlink al dan niet zichtbaar is.
+function require_module(string $website_id, string $module_key): void
+{
+    if (!module_enabled($website_id, $module_key)) {
+        http_response_code(403);
+        exit('Deze module is niet ingeschakeld voor deze website.');
+    }
+}
+
 function set_footer_setting($sleutel, $waarde)
 {
     global $pdo;
