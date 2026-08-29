@@ -41,8 +41,11 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_content_key') {
         $targets = $apply_all ? all_website_ids($pdo) : [$website_id];
         $added = 0;
         foreach ($targets as $target_id) {
-            $check = $pdo->prepare("SELECT id FROM site_content WHERE website_id = ? AND section_key = ?");
-            $check->execute([$target_id, $section_key]);
+            // Uniek per (website, pagina, key) — niet per key alleen, anders kan
+            // dezelfde section_key niet meer los bestaan op meerdere pagina's
+            // (bijv. 'contact_email' op zowel 'algemeen' als 'contact').
+            $check = $pdo->prepare("SELECT id FROM site_content WHERE website_id = ? AND page = ? AND section_key = ?");
+            $check->execute([$target_id, $page, $section_key]);
             if ($check->fetchColumn()) {
                 continue;
             }
@@ -56,11 +59,12 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_content_key') {
 if (isset($_POST['action']) && $_POST['action'] === 'delete_content_key') {
     csrf_verify();
     $section_key = $_POST['section_key'] ?? '';
+    $page = $_POST['page'] ?? '';
     $apply_all = isset($_POST['apply_all_delete']);
     $targets = $apply_all ? all_website_ids($pdo) : [$website_id];
     $in = implode(',', array_fill(0, count($targets), '?'));
-    $pdo->prepare("DELETE FROM site_content WHERE section_key = ? AND website_id IN ($in)")
-        ->execute(array_merge([$section_key], $targets));
+    $pdo->prepare("DELETE FROM site_content WHERE section_key = ? AND page = ? AND website_id IN ($in)")
+        ->execute(array_merge([$section_key, $page], $targets));
     $message = "Veld '{$section_key}' verwijderd.";
 }
 
@@ -292,6 +296,7 @@ $website_count = count(all_website_ids($pdo));
                     <div class="overflow-x-auto border rounded-lg border-gray-200">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
                             <thead class="bg-gray-50"><tr>
+                                <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Pagina</th>
                                 <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Key</th>
                                 <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Label</th>
                                 <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Type</th>
@@ -300,6 +305,7 @@ $website_count = count(all_website_ids($pdo));
                             <tbody class="divide-y divide-gray-200 bg-white">
                                 <?php foreach ($content_keys as $ck): ?>
                                 <tr>
+                                    <td class="px-3 py-2 font-mono text-xs text-gray-400"><?php echo htmlspecialchars($ck['page']); ?></td>
                                     <td class="px-3 py-2 font-mono text-xs text-gray-600"><?php echo htmlspecialchars($ck['section_key']); ?></td>
                                     <td class="px-3 py-2"><?php echo htmlspecialchars($ck['label'] ?: '—'); ?></td>
                                     <td class="px-3 py-2 text-gray-500"><?php echo htmlspecialchars($ck['type']); ?></td>
@@ -308,6 +314,7 @@ $website_count = count(all_website_ids($pdo));
                                             <?php echo csrf_field(); ?>
                                             <input type="hidden" name="action" value="delete_content_key">
                                             <input type="hidden" name="section_key" value="<?php echo htmlspecialchars($ck['section_key']); ?>">
+                                            <input type="hidden" name="page" value="<?php echo htmlspecialchars($ck['page']); ?>">
                                             <label class="text-xs text-gray-400 flex items-center gap-1"><input type="checkbox" name="apply_all_delete" class="rounded border-gray-300"> overal</label>
                                             <button type="submit" class="text-red-500 hover:text-red-700 font-medium text-xs">Verwijder</button>
                                         </form>
@@ -315,7 +322,7 @@ $website_count = count(all_website_ids($pdo));
                                 </tr>
                                 <?php endforeach; ?>
                                 <?php if (empty($content_keys)): ?>
-                                <tr><td colspan="4" class="px-3 py-4 text-center text-gray-400 italic">Nog geen tekstvelden.</td></tr>
+                                <tr><td colspan="5" class="px-3 py-4 text-center text-gray-400 italic">Nog geen tekstvelden.</td></tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>

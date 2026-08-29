@@ -47,6 +47,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+// --- CADEAUKAART BEWERKEN ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_kaart') {
+    csrf_verify();
+    $id = $_POST['edit_id'] ?? '';
+    $kaart_naam = trim($_POST['kaart_naam'] ?? '');
+    $geschikte_winkels = trim($_POST['geschikte_winkels'] ?? '');
+    $tags = trim($_POST['tags'] ?? '');
+
+    $check = $pdo->prepare("SELECT afbeelding FROM cadeaukaarten WHERE id = ? AND website_id = ?");
+    $check->execute([$id, $website_id]);
+    $bestaande = $check->fetch();
+
+    if (!$bestaande || $kaart_naam === '') {
+        header("Location: cadeaukaartenbeheer.php?msg=invalid");
+        exit;
+    }
+
+    $afbeelding = $bestaande['afbeelding'];
+    if (!empty($_FILES['afbeelding']['name'])) {
+        try {
+            $nieuwe_afbeelding = save_uploaded_image('afbeelding', $website_id);
+            if ($nieuwe_afbeelding !== null) {
+                delete_uploaded_file($afbeelding ?: null);
+                $afbeelding = $nieuwe_afbeelding;
+            }
+        } catch (UploadException $e) {
+            header("Location: cadeaukaartenbeheer.php?msg=upload_error");
+            exit;
+        }
+    }
+
+    $stmt = $pdo->prepare("UPDATE cadeaukaarten SET kaart_naam = ?, geschikte_winkels = ?, tags = ?, afbeelding = ? WHERE id = ? AND website_id = ?");
+    $stmt->execute([$kaart_naam, $geschikte_winkels, $tags, $afbeelding, $id, $website_id]);
+    header("Location: cadeaukaartenbeheer.php?msg=updated");
+    exit;
+}
+
 // --- CADEAUKAART VERWIJDEREN ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_kaart'])) {
     csrf_verify();
@@ -102,6 +139,7 @@ $kaarten = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php echo (strpos($_GET['msg'], 'deleted') !== false || strpos($_GET['msg'], 'error') !== false || $_GET['msg'] === 'invalid') ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-green-100 text-green-800 border border-green-200'; ?>">
                 <?php
                     if ($_GET['msg'] === 'added') echo 'Cadeaukaart succesvol toegevoegd!';
+                    if ($_GET['msg'] === 'updated') echo 'Cadeaukaart succesvol bijgewerkt!';
                     if ($_GET['msg'] === 'deleted') echo 'Cadeaukaart verwijderd!';
                     if ($_GET['msg'] === 'invalid') echo 'Vul minimaal een naam in.';
                     if ($_GET['msg'] === 'upload_error') echo 'De afbeelding kon niet worden geupload.';
@@ -168,7 +206,13 @@ $kaarten = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         </td>
                                         <td class="px-4 py-3 text-sm font-medium text-slate-900"><?php echo htmlspecialchars($k['kaart_naam']); ?></td>
                                         <td class="px-4 py-3 text-sm text-gray-500 hidden md:table-cell"><?php echo htmlspecialchars($k['geschikte_winkels']); ?></td>
-                                        <td class="px-4 py-3 text-right">
+                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                                            <button type="button" class="edit-kaart-btn text-blue-600 hover:text-blue-800 font-medium text-sm mr-3"
+                                                data-id="<?php echo htmlspecialchars($k['id']); ?>"
+                                                data-naam="<?php echo htmlspecialchars($k['kaart_naam']); ?>"
+                                                data-winkels="<?php echo htmlspecialchars($k['geschikte_winkels']); ?>"
+                                                data-tags="<?php echo htmlspecialchars($k['tags']); ?>"
+                                                data-afbeelding="<?php echo htmlspecialchars($k['afbeelding'] ?? ''); ?>">Bewerk</button>
                                             <button type="submit" form="delete-kaart-<?php echo htmlspecialchars($k['id']); ?>" class="text-red-500 hover:text-red-700 font-medium text-sm">Verwijder</button>
                                         </td>
                                     </tr>
@@ -184,6 +228,42 @@ $kaarten = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
+        </div>
+    </div>
+
+    <div id="editKaartModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Cadeaukaart Bewerken</h3>
+                <button type="button" id="closeEditKaartModal" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            </div>
+            <form method="POST" action="cadeaukaartenbeheer.php" enctype="multipart/form-data">
+                <?php echo csrf_field(); ?>
+                <input type="hidden" name="action" value="edit_kaart">
+                <input type="hidden" name="edit_id" id="edit_kaart_id">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Naam kaart</label>
+                    <input type="text" name="kaart_naam" id="edit_kaart_naam" required class="w-full border-gray-300 rounded-md border p-2 focus:border-pink-500 focus:ring-pink-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Geschikte winkels</label>
+                    <input type="text" name="geschikte_winkels" id="edit_kaart_winkels" class="w-full border-gray-300 rounded-md border p-2 focus:border-pink-500 focus:ring-pink-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tags (kommagescheiden)</label>
+                    <input type="text" name="tags" id="edit_kaart_tags" class="w-full border-gray-300 rounded-md border p-2 focus:border-pink-500 focus:ring-pink-500">
+                </div>
+                <div class="mb-2">
+                    <img id="edit_kaart_preview" src="" class="w-16 h-16 rounded object-cover border border-gray-200 hidden">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nieuwe afbeelding (optioneel, laat leeg om te behouden)</label>
+                    <input type="file" name="afbeelding" accept="image/jpeg,image/png,image/webp,image/gif" class="w-full text-sm">
+                </div>
+                <button type="submit" class="w-full bg-slate-900 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-800 transition-colors">
+                    Wijzigingen Opslaan
+                </button>
+            </form>
         </div>
     </div>
 
@@ -251,6 +331,26 @@ $kaarten = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     notif.classList.add('opacity-0');
                 }, 2500);
             }
+
+            const editModal = document.getElementById('editKaartModal');
+            document.querySelectorAll('.edit-kaart-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.getElementById('edit_kaart_id').value = this.dataset.id;
+                    document.getElementById('edit_kaart_naam').value = this.dataset.naam;
+                    document.getElementById('edit_kaart_winkels').value = this.dataset.winkels;
+                    document.getElementById('edit_kaart_tags').value = this.dataset.tags;
+                    const preview = document.getElementById('edit_kaart_preview');
+                    if (this.dataset.afbeelding) {
+                        preview.src = this.dataset.afbeelding;
+                        preview.classList.remove('hidden');
+                    } else {
+                        preview.classList.add('hidden');
+                    }
+                    editModal.classList.remove('hidden');
+                });
+            });
+            document.getElementById('closeEditKaartModal').addEventListener('click', () => editModal.classList.add('hidden'));
+            editModal.addEventListener('click', function (e) { if (e.target === this) this.classList.add('hidden'); });
         });
     </script>
 </body>

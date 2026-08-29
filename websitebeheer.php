@@ -11,10 +11,12 @@ if (isset($_POST['update_content'])) {
     csrf_verify();
     $pdo->prepare("UPDATE site_content SET is_visible = 0 WHERE website_id = ?")->execute([$website_id]);
     if (isset($_POST['content'])) {
-        foreach ($_POST['content'] as $key => $value) {
-            $is_visible = isset($_POST['visible'][$key]) ? 1 : 0;
-            $stmt = $pdo->prepare("UPDATE site_content SET content_text = ?, is_visible = ? WHERE website_id = ? AND section_key = ?");
-            $stmt->execute([$value, $is_visible, $website_id, $key]);
+        foreach ($_POST['content'] as $page => $items) {
+            foreach ($items as $key => $value) {
+                $is_visible = isset($_POST['visible'][$page][$key]) ? 1 : 0;
+                $stmt = $pdo->prepare("UPDATE site_content SET content_text = ?, is_visible = ? WHERE website_id = ? AND page = ? AND section_key = ?");
+                $stmt->execute([$value, $is_visible, $website_id, $page, $key]);
+            }
         }
     }
     $message = "Teksten en instellingen zijn succesvol bijgewerkt!";
@@ -289,16 +291,28 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                     <button type="submit" name="update_content" class="bg-pink-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-pink-700 shadow-sm transition-colors hidden md:block">Alles Opslaan</button>
                 </div>
                 <?php
-                // Groepering: gebruikt eerst de group_name uit de database (zo komen
-                // via super_velden.php toegevoegde velden vanzelf in de juiste, of een
-                // eigen nieuwe, sectie terecht). Rijen zonder group_name (de historische
-                // velden) vallen terug op de oude prefix-detectie, zodat de bestaande
-                // indeling niet verandert.
+                // Groepering: EERST op pagina (waar staat de tekst echt op de site?),
+                // en daarbinnen op group_name. Zo kan hetzelfde veldnaam-patroon (bijv.
+                // 'contact_email') gewoon los op meerdere pagina's bestaan zonder dat
+                // ze in het formulier door elkaar lopen — elk veld wordt opgeslagen als
+                // content[pagina][key], nooit alleen content[key].
+                $page_meta = [
+                    'home' => ['icon' => '🏠', 'title' => 'Homepagina'],
+                    'about' => ['icon' => '👩', 'title' => 'Over Ons pagina'],
+                    'contact' => ['icon' => '✉️', 'title' => 'Contactpagina'],
+                    'algemeen' => ['icon' => '⚙️', 'title' => 'Algemeen (overal op de site)'],
+                ];
                 $group_meta = [
-                    'hero' => ['icon' => '🏠', 'title' => 'Homepage Bovenkant (Hero)', 'desc' => 'De grote tekst bovenaan de website.'],
+                    'hero' => ['icon' => '🏠', 'title' => 'Bovenkant (Hero)', 'desc' => 'De grote tekst bovenaan.'],
                     'about' => ['icon' => '👩', 'title' => 'Over Ons Sectie', 'desc' => 'Stel het bedrijf voor aan klanten.'],
+                    'story' => ['icon' => '📖', 'title' => 'Het Verhaal', 'desc' => 'De lopende tekst op de Over Ons-pagina.'],
                     'promo' => ['icon' => '🎁', 'title' => 'Aanbieding / Actie', 'desc' => 'Licht een tijdelijke actie uit.'],
                     'portfolio' => ['icon' => '📸', 'title' => 'Portfolio Sectie', 'desc' => 'Instellingen voor de fotogalerij.'],
+                    'info' => ['icon' => 'ℹ️', 'title' => 'Contactgegevens', 'desc' => 'Adres, telefoon en e-mail op de contactpagina.'],
+                    'contact' => ['icon' => '☎️', 'title' => 'Contactgegevens', 'desc' => 'Gegevens die elders op de site worden getoond (bijv. footer).'],
+                    'social' => ['icon' => '📱', 'title' => 'Social Media', 'desc' => 'Links naar social-mediakanalen.'],
+                    'footer' => ['icon' => '📄', 'title' => 'Footer', 'desc' => 'Tekst onderaan de website.'],
+                    'bedrijfsgegevens' => ['icon' => '🏢', 'title' => 'Bedrijfsgegevens', 'desc' => 'KVK, BTW en andere juridische gegevens.'],
                 ];
                 $labels = [
                     'hero_title' => 'Grote Hoofdtitel',
@@ -310,11 +324,10 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                     'portfolio_title' => 'Titel boven fotogalerij'
                 ];
 
-                $grouped_content = [];
-                foreach (['hero', 'about', 'promo', 'portfolio'] as $gk) {
-                    $grouped_content[$gk] = $group_meta[$gk] + ['items' => []];
-                }
+                $page_order = ['home', 'about', 'contact', 'algemeen'];
+                $grouped_pages = [];
                 foreach ($algemeen_content as $item) {
+                    $page = $item['page'];
                     $k = $item['section_key'];
                     $group_key = !empty($item['group_name']) ? $item['group_name'] : null;
                     if (!$group_key) {
@@ -324,56 +337,72 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                         elseif (strpos($k, 'portfolio_') === 0) $group_key = 'portfolio';
                         else $group_key = 'overig';
                     }
-                    if (!isset($grouped_content[$group_key])) {
-                        $meta = $group_meta[$group_key] ?? ['icon' => '📄', 'title' => ucfirst(str_replace('_', ' ', $group_key)), 'desc' => ''];
-                        $grouped_content[$group_key] = $meta + ['items' => []];
+                    if (!isset($grouped_pages[$page])) {
+                        $grouped_pages[$page] = ($page_meta[$page] ?? ['icon' => '📄', 'title' => ucfirst(str_replace('_', ' ', $page))]) + ['groups' => []];
                     }
-                    $grouped_content[$group_key]['items'][] = $item;
+                    if (!isset($grouped_pages[$page]['groups'][$group_key])) {
+                        $meta = $group_meta[$group_key] ?? ['icon' => '📄', 'title' => ucfirst(str_replace('_', ' ', $group_key)), 'desc' => ''];
+                        $grouped_pages[$page]['groups'][$group_key] = $meta + ['items' => []];
+                    }
+                    $grouped_pages[$page]['groups'][$group_key]['items'][] = $item;
                 }
-                // "Overig" komt altijd als laatste, ook als hij pas net is aangemaakt.
-                $overig = $grouped_content['overig'] ?? (['icon' => '⚙️', 'title' => 'Overige Teksten', 'desc' => 'Andere instellingen op de website.', 'items' => []]);
-                unset($grouped_content['overig']);
-                $grouped_content['overig'] = $overig;
+                // Bekende pagina's eerst en in een vaste, voorspelbare volgorde; onbekende
+                // pagina's (indien ooit toegevoegd via super_velden.php) komen er achteraan.
+                uksort($grouped_pages, function ($a, $b) use ($page_order) {
+                    $pa = array_search($a, $page_order);
+                    $pb = array_search($b, $page_order);
+                    if ($pa === false) $pa = 999;
+                    if ($pb === false) $pb = 999;
+                    return $pa <=> $pb ?: strcmp($a, $b);
+                });
                 ?>
-                <div class="space-y-10">
-                    <?php foreach ($grouped_content as $group_key => $group): ?>
-                        <?php if (count($group['items']) > 0): ?>
-                            <div class="bg-gray-50 rounded-2xl p-6 border border-gray-200">
-                                <div class="mb-6 pb-3 border-b border-gray-200 flex flex-col md:flex-row md:items-center gap-2">
-                                    <h3 class="text-xl font-bold text-gray-800 flex items-center gap-3">
-                                        <span class="bg-white p-2 rounded-lg shadow-sm"><?php echo $group['icon']; ?></span>
-                                        <?php echo $group['title']; ?>
-                                    </h3>
-                                    <p class="text-sm text-gray-500 md:ml-4 border-l-0 md:border-l-2 border-gray-300 md:pl-4"><?php echo $group['desc']; ?></p>
-                                </div>
-                                <div class="grid md:grid-cols-2 gap-6">
-                                    <?php foreach ($group['items'] as $item): ?>
-                                        <?php
-                                            $key = $item['section_key'];
-                                            $friendly_name = $labels[$key] ?? (!empty($item['label']) ? $item['label'] : ucfirst(str_replace('_', ' ', $key)));
-                                        ?>
-                                        <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm relative group">
-                                            <div class="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <label class="font-bold text-gray-800 text-sm block">
-                                                        <?php echo htmlspecialchars($friendly_name); ?>
-                                                    </label>
-                                                </div>
-                                                <label class="inline-flex items-center cursor-pointer">
-                                                    <input type="checkbox" name="visible[<?php echo htmlspecialchars($key); ?>]" value="1" <?php echo $item['is_visible'] ? 'checked' : ''; ?> class="sr-only peer">
-                                                    <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
-                                                </label>
-                                            </div>
-                                            <?php if (strpos($key, 'title') !== false): ?>
-                                                <input type="text" name="content[<?php echo htmlspecialchars($key); ?>]" value="<?php echo htmlspecialchars($item['content_text']); ?>" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-pink-400 focus:border-pink-400 text-sm transition-all">
-                                            <?php else: ?>
-                                                <textarea name="content[<?php echo htmlspecialchars($key); ?>]" rows="4" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-pink-400 focus:border-pink-400 text-sm transition-all"><?php echo htmlspecialchars($item['content_text']); ?></textarea>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
+                <div class="space-y-14">
+                    <?php foreach ($grouped_pages as $page_key => $page): ?>
+                        <div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="text-2xl"><?php echo $page['icon']; ?></span>
+                                <h2 class="text-lg font-black uppercase tracking-wide text-gray-700"><?php echo htmlspecialchars($page['title']); ?></h2>
                             </div>
-                        <?php endif; ?>
+                            <div class="space-y-6 pl-2 border-l-4 border-pink-100">
+                                <?php foreach ($page['groups'] as $group): ?>
+                                    <div class="bg-gray-50 rounded-2xl p-6 border border-gray-200 ml-4">
+                                        <div class="mb-6 pb-3 border-b border-gray-200 flex flex-col md:flex-row md:items-center gap-2">
+                                            <h3 class="text-xl font-bold text-gray-800 flex items-center gap-3">
+                                                <span class="bg-white p-2 rounded-lg shadow-sm"><?php echo $group['icon']; ?></span>
+                                                <?php echo $group['title']; ?>
+                                            </h3>
+                                            <p class="text-sm text-gray-500 md:ml-4 border-l-0 md:border-l-2 border-gray-300 md:pl-4"><?php echo $group['desc']; ?></p>
+                                        </div>
+                                        <div class="grid md:grid-cols-2 gap-6">
+                                            <?php foreach ($group['items'] as $item): ?>
+                                                <?php
+                                                    $key = $item['section_key'];
+                                                    $friendly_name = $labels[$key] ?? (!empty($item['label']) ? $item['label'] : ucfirst(str_replace('_', ' ', $key)));
+                                                ?>
+                                                <div class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm relative group">
+                                                    <div class="flex justify-between items-start mb-4">
+                                                        <div>
+                                                            <label class="font-bold text-gray-800 text-sm block">
+                                                                <?php echo htmlspecialchars($friendly_name); ?>
+                                                            </label>
+                                                        </div>
+                                                        <label class="inline-flex items-center cursor-pointer">
+                                                            <input type="checkbox" name="visible[<?php echo htmlspecialchars($page_key); ?>][<?php echo htmlspecialchars($key); ?>]" value="1" <?php echo $item['is_visible'] ? 'checked' : ''; ?> class="sr-only peer">
+                                                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
+                                                        </label>
+                                                    </div>
+                                                    <?php if (strpos($key, 'title') !== false): ?>
+                                                        <input type="text" name="content[<?php echo htmlspecialchars($page_key); ?>][<?php echo htmlspecialchars($key); ?>]" value="<?php echo htmlspecialchars($item['content_text']); ?>" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-pink-400 focus:border-pink-400 text-sm transition-all">
+                                                    <?php else: ?>
+                                                        <textarea name="content[<?php echo htmlspecialchars($page_key); ?>][<?php echo htmlspecialchars($key); ?>]" rows="4" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-pink-400 focus:border-pink-400 text-sm transition-all"><?php echo htmlspecialchars($item['content_text']); ?></textarea>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     <?php endforeach; ?>
                 </div>
                 <div class="mt-8 sticky bottom-6 z-10 flex justify-end">

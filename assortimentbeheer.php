@@ -53,6 +53,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+// --- 2B. CATEGORIE BEWERKEN ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'edit_category') {
+    csrf_verify();
+    $id = $_POST['edit_id'] ?? '';
+    $titel = trim($_POST['titel'] ?? '');
+    $beschrijving = trim($_POST['beschrijving'] ?? '');
+    $badge_tekst = trim($_POST['badge_tekst'] ?? '');
+
+    $check = $pdo->prepare("SELECT afbeelding FROM assortiment_categorieen WHERE id = ? AND website_id = ?");
+    $check->execute([$id, $website_id]);
+    $bestaande = $check->fetch();
+
+    if (!$bestaande || $titel === '') {
+        header("Location: assortimentbeheer.php?msg=invalid_category");
+        exit;
+    }
+
+    $afbeelding = $bestaande['afbeelding'];
+    if (!empty($_FILES['afbeelding']['name'])) {
+        try {
+            $nieuwe_afbeelding = save_uploaded_image('afbeelding', $website_id);
+            if ($nieuwe_afbeelding !== null) {
+                delete_uploaded_file($afbeelding ?: null);
+                $afbeelding = $nieuwe_afbeelding;
+            }
+        } catch (UploadException $e) {
+            header("Location: assortimentbeheer.php?msg=upload_error");
+            exit;
+        }
+    }
+
+    $stmt = $pdo->prepare("UPDATE assortiment_categorieen SET titel = ?, beschrijving = ?, badge_tekst = ?, afbeelding = ? WHERE id = ? AND website_id = ?");
+    $stmt->execute([$titel, $beschrijving, $badge_tekst ?: null, $afbeelding, $id, $website_id]);
+    header("Location: assortimentbeheer.php?msg=cat_updated");
+    exit;
+}
+
 // --- 3. CATEGORIE VERWIJDEREN ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_cat'])) {
     csrf_verify();
@@ -100,6 +137,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $stmt = $pdo->prepare("INSERT INTO assortiment_merken (id, website_id, category_id, naam, logo_path, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
     $stmt->execute([$new_id, $website_id, $category_id, $naam, $logo_path, $sort_order]);
     header("Location: assortimentbeheer.php?msg=merk_added");
+    exit;
+}
+
+// --- 4B. MERK BEWERKEN ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'edit_merk') {
+    csrf_verify();
+    $id = $_POST['edit_id'] ?? '';
+    $category_id = $_POST['category_id'] ?? '';
+    $naam = trim($_POST['naam'] ?? '');
+
+    $check = $pdo->prepare("SELECT logo_path FROM assortiment_merken WHERE id = ? AND website_id = ?");
+    $check->execute([$id, $website_id]);
+    $bestaande = $check->fetch();
+
+    $cat_check = $pdo->prepare("SELECT id FROM assortiment_categorieen WHERE id = ? AND website_id = ?");
+    $cat_check->execute([$category_id, $website_id]);
+
+    if (!$bestaande || !$cat_check->fetchColumn() || $naam === '') {
+        header("Location: assortimentbeheer.php?msg=invalid_merk");
+        exit;
+    }
+
+    $logo_path = $bestaande['logo_path'];
+    if (!empty($_FILES['logo']['name'])) {
+        try {
+            $nieuw_logo = save_uploaded_image('logo', $website_id);
+            if ($nieuw_logo !== null) {
+                delete_uploaded_file($logo_path ?: null);
+                $logo_path = $nieuw_logo;
+            }
+        } catch (UploadException $e) {
+            header("Location: assortimentbeheer.php?msg=upload_error");
+            exit;
+        }
+    }
+
+    $stmt = $pdo->prepare("UPDATE assortiment_merken SET category_id = ?, naam = ?, logo_path = ? WHERE id = ? AND website_id = ?");
+    $stmt->execute([$category_id, $naam, $logo_path, $id, $website_id]);
+    header("Location: assortimentbeheer.php?msg=merk_updated");
     exit;
 }
 
@@ -166,8 +242,10 @@ foreach ($merken as $m) {
                 <?php echo (strpos($_GET['msg'], 'deleted') !== false || strpos($_GET['msg'], 'invalid') !== false || strpos($_GET['msg'], 'error') !== false) ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-green-100 text-green-800 border border-green-200'; ?>">
                 <?php
                     if ($_GET['msg'] == 'cat_added') echo 'Categorie succesvol toegevoegd!';
+                    if ($_GET['msg'] == 'cat_updated') echo 'Categorie succesvol bijgewerkt!';
                     if ($_GET['msg'] == 'cat_deleted') echo 'Categorie (en bijbehorende merken) verwijderd!';
                     if ($_GET['msg'] == 'merk_added') echo 'Merk succesvol toegevoegd!';
+                    if ($_GET['msg'] == 'merk_updated') echo 'Merk succesvol bijgewerkt!';
                     if ($_GET['msg'] == 'merk_deleted') echo 'Merk verwijderd!';
                     if ($_GET['msg'] == 'invalid_category') echo 'Vul minimaal een titel in.';
                     if ($_GET['msg'] == 'invalid_merk') echo 'Kies een categorie, vul een naam in en upload een logo.';
@@ -242,7 +320,13 @@ foreach ($merken as $m) {
                                                 <?php endif; ?>
                                                 <div class="text-xs text-gray-400 font-normal mt-0.5"><?php echo count($merkenByCategory[$cat['id']] ?? []); ?> merken</div>
                                             </td>
-                                            <td class="px-4 py-3 text-right">
+                                            <td class="px-4 py-3 text-right whitespace-nowrap">
+                                                <button type="button" class="edit-cat-btn text-blue-600 hover:text-blue-800 font-medium text-sm mr-3"
+                                                    data-id="<?php echo htmlspecialchars($cat['id']); ?>"
+                                                    data-titel="<?php echo htmlspecialchars($cat['titel']); ?>"
+                                                    data-beschrijving="<?php echo htmlspecialchars($cat['beschrijving']); ?>"
+                                                    data-badge="<?php echo htmlspecialchars($cat['badge_tekst'] ?? ''); ?>"
+                                                    data-afbeelding="<?php echo htmlspecialchars($cat['afbeelding'] ?? ''); ?>">Bewerk</button>
                                                 <button type="submit" form="delete-cat-<?php echo htmlspecialchars($cat['id']); ?>" class="text-red-500 hover:text-red-700 font-medium text-sm">Verwijder</button>
                                             </td>
                                         </tr>
@@ -319,7 +403,12 @@ foreach ($merken as $m) {
                                                         <td class="drag-column-merk hidden w-12 px-4 py-3 drag-handle text-gray-400 hover:text-pink-500 bg-pink-50">☰</td>
                                                         <td class="w-16 px-4 py-3"><img src="<?php echo htmlspecialchars($m['logo_path']); ?>" class="w-10 h-10 rounded object-cover border border-gray-200"></td>
                                                         <td class="px-4 py-3 text-sm font-medium text-slate-900"><?php echo htmlspecialchars($m['naam']); ?></td>
-                                                        <td class="px-4 py-3 text-right">
+                                                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                                                            <button type="button" class="edit-merk-btn text-blue-600 hover:text-blue-800 font-medium text-sm mr-3"
+                                                                data-id="<?php echo htmlspecialchars($m['id']); ?>"
+                                                                data-naam="<?php echo htmlspecialchars($m['naam']); ?>"
+                                                                data-category="<?php echo htmlspecialchars($m['category_id']); ?>"
+                                                                data-logo="<?php echo htmlspecialchars($m['logo_path'] ?? ''); ?>">Bewerk</button>
                                                             <button type="submit" form="delete-merk-<?php echo htmlspecialchars($m['id']); ?>" class="text-red-500 hover:text-red-700 font-medium text-sm">Verwijder</button>
                                                         </td>
                                                     </tr>
@@ -339,6 +428,78 @@ foreach ($merken as $m) {
                     <?php endif; ?>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="editCatModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Categorie Bewerken</h3>
+                <button type="button" id="closeEditCatModal" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            </div>
+            <form method="POST" action="assortimentbeheer.php" enctype="multipart/form-data">
+                <?php echo csrf_field(); ?>
+                <input type="hidden" name="action" value="edit_category">
+                <input type="hidden" name="edit_id" id="edit_cat_id">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Titel</label>
+                    <input type="text" name="titel" id="edit_cat_titel" required class="w-full border-gray-300 rounded-md border p-2 focus:border-pink-500 focus:ring-pink-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Beschrijving</label>
+                    <textarea name="beschrijving" id="edit_cat_beschrijving" rows="3" class="w-full border-gray-300 rounded-md border p-2 focus:border-pink-500 focus:ring-pink-500"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Badge-tekst (optioneel)</label>
+                    <input type="text" name="badge_tekst" id="edit_cat_badge" class="w-full border-gray-300 rounded-md border p-2 focus:border-pink-500 focus:ring-pink-500">
+                </div>
+                <div class="mb-2">
+                    <img id="edit_cat_preview" src="" class="w-16 h-16 rounded object-cover border border-gray-200 hidden">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nieuwe afbeelding (optioneel, laat leeg om te behouden)</label>
+                    <input type="file" name="afbeelding" accept="image/jpeg,image/png,image/webp,image/gif" class="w-full text-sm">
+                </div>
+                <button type="submit" class="w-full bg-slate-900 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-800 transition-colors">
+                    Wijzigingen Opslaan
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="editMerkModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Merk Bewerken</h3>
+                <button type="button" id="closeEditMerkModal" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            </div>
+            <form method="POST" action="assortimentbeheer.php" enctype="multipart/form-data">
+                <?php echo csrf_field(); ?>
+                <input type="hidden" name="action" value="edit_merk">
+                <input type="hidden" name="edit_id" id="edit_merk_id">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Categorie</label>
+                    <select name="category_id" id="edit_merk_category" required class="w-full border-gray-300 rounded-md border p-2 bg-white focus:border-pink-500 focus:ring-pink-500">
+                        <?php foreach ($categorieen as $cat): ?>
+                            <option value="<?php echo htmlspecialchars($cat['id']); ?>"><?php echo htmlspecialchars($cat['titel']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Naam merk</label>
+                    <input type="text" name="naam" id="edit_merk_naam" required class="w-full border-gray-300 rounded-md border p-2 focus:border-pink-500 focus:ring-pink-500">
+                </div>
+                <div class="mb-2">
+                    <img id="edit_merk_preview" src="" class="w-16 h-16 rounded object-cover border border-gray-200 hidden">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nieuw logo (optioneel, laat leeg om te behouden)</label>
+                    <input type="file" name="logo" accept="image/jpeg,image/png,image/webp,image/gif" class="w-full text-sm">
+                </div>
+                <button type="submit" class="w-full bg-slate-900 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-800 transition-colors">
+                    Wijzigingen Opslaan
+                </button>
+            </form>
         </div>
     </div>
 
@@ -414,6 +575,45 @@ foreach ($merken as $m) {
                     notif.classList.add('opacity-0');
                 }, 2500);
             }
+
+            const editCatModal = document.getElementById('editCatModal');
+            document.querySelectorAll('.edit-cat-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.getElementById('edit_cat_id').value = this.dataset.id;
+                    document.getElementById('edit_cat_titel').value = this.dataset.titel;
+                    document.getElementById('edit_cat_beschrijving').value = this.dataset.beschrijving;
+                    document.getElementById('edit_cat_badge').value = this.dataset.badge;
+                    const preview = document.getElementById('edit_cat_preview');
+                    if (this.dataset.afbeelding) {
+                        preview.src = this.dataset.afbeelding;
+                        preview.classList.remove('hidden');
+                    } else {
+                        preview.classList.add('hidden');
+                    }
+                    editCatModal.classList.remove('hidden');
+                });
+            });
+            document.getElementById('closeEditCatModal').addEventListener('click', () => editCatModal.classList.add('hidden'));
+            editCatModal.addEventListener('click', function (e) { if (e.target === this) this.classList.add('hidden'); });
+
+            const editMerkModal = document.getElementById('editMerkModal');
+            document.querySelectorAll('.edit-merk-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.getElementById('edit_merk_id').value = this.dataset.id;
+                    document.getElementById('edit_merk_naam').value = this.dataset.naam;
+                    document.getElementById('edit_merk_category').value = this.dataset.category;
+                    const preview = document.getElementById('edit_merk_preview');
+                    if (this.dataset.logo) {
+                        preview.src = this.dataset.logo;
+                        preview.classList.remove('hidden');
+                    } else {
+                        preview.classList.add('hidden');
+                    }
+                    editMerkModal.classList.remove('hidden');
+                });
+            });
+            document.getElementById('closeEditMerkModal').addEventListener('click', () => editMerkModal.classList.add('hidden'));
+            editMerkModal.addEventListener('click', function (e) { if (e.target === this) this.classList.add('hidden'); });
         });
     </script>
 </body>
