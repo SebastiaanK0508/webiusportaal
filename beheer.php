@@ -6,13 +6,6 @@ $username = current_user()['username'] ?? 'Beheerder';
 $website = current_website();
 $site_label = $website['company_name'] ?? 'Webius Portaal';
 $website_id = $website['id'];
-
-// De vijf module-tabellen (nieuws, cadeaukaarten, assortiment, prijsvraag,
-// geschiedenis) horen bij één type website (zoals Primera de Bandijk); de
-// generieke tabellen (products/categories/portfolio/reviews) horen bij het
-// standaard dienstverlener-sjabloon (zoals de Webius-demo). Het dashboard
-// toont daarom alleen tegels en snelkoppelingen die voor déze website ook
-// echt iets betekenen, in plaats van altijd dezelfde vaste lijst.
 $enabled_modules = [];
 try {
     $enabled_modules = get_enabled_modules($website_id);
@@ -36,8 +29,6 @@ $module_count = function (string $table) use ($pdo, $website_id): int {
         return 0;
     }
 };
-
-// Statistiektegels: eerst wat voor déze website daadwerkelijk gebruikt wordt.
 $stat_tiles = [];
 $stat_tiles[] = ['count' => $unread_messages, 'label' => 'Nieuwe berichten', 'color' => 'emerald', 'icon' => 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'];
 if (in_array('nieuws', $enabled_modules, true)) {
@@ -52,8 +43,6 @@ if (in_array('assortiment', $enabled_modules, true)) {
 if (in_array('prijsvraag', $enabled_modules, true)) {
     $stat_tiles[] = ['count' => $module_count('prijsvraag_inzendingen'), 'label' => 'Prijsvraag inzendingen', 'color' => 'amber', 'icon' => 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z'];
 }
-// Geen van de vijf modules aan? Dan is dit het generieke dienstverlener-sjabloon
-// (zoals de Webius-demo) — val terug op de oude, generieke tegels.
 if (empty($enabled_modules)) {
     try {
         $stat_tiles[] = ['count' => count(get_portfolio()), 'label' => 'Portfolio Items', 'color' => 'pink', 'icon' => 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'];
@@ -68,9 +57,6 @@ $tile_color_classes = [
     'amber' => 'bg-amber-50 text-amber-500',
     'emerald' => 'bg-emerald-50 text-emerald-600',
 ];
-
-// Snelkoppelingen: altijd de dingen die overal bruikbaar zijn, aangevuld met
-// een kaart per module die voor déze website daadwerkelijk aan staat.
 $shortcuts = [];
 if (in_array('nieuws', $enabled_modules, true)) {
     $shortcuts[] = ['href' => 'nieuwsbeheer.php', 'title' => 'Nieuws', 'desc' => 'Nieuwsberichten plaatsen, bewerken of verwijderen.', 'icon' => 'M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z'];

@@ -154,6 +154,50 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_user') {
     }
 }
 
+// --- GEBRUIKER BIJWERKEN ---
+if (isset($_POST['action']) && $_POST['action'] === 'update_user') {
+    csrf_verify();
+    $id = $_POST['user_id'] ?? '';
+    $username = trim($_POST['username'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $role = in_array($_POST['role'] ?? '', ['super_admin', 'client'], true) ? $_POST['role'] : 'client';
+    $user_website_id = $_POST['user_website_id'] ?? '';
+
+    $target = $pdo->prepare("SELECT id, role FROM users WHERE id = ?");
+    $target->execute([$id]);
+    $target = $target->fetch();
+
+    if (!$target) {
+        $error = "Gebruiker niet gevonden.";
+    } elseif ($username === '' || $email === '') {
+        $error = "Gebruikersnaam en e-mail zijn verplicht.";
+    } elseif ($password !== '' && strlen($password) < 8) {
+        $error = "Het nieuwe wachtwoord moet minimaal 8 tekens zijn.";
+    } elseif ($id === current_user_id() && $role !== $target['role']) {
+        $error = "Je kunt je eigen rol niet wijzigen.";
+    } elseif ($role === 'client' && $user_website_id === '') {
+        $error = "Kies een website voor een client-account.";
+    } else {
+        $exists = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
+        $exists->execute([$username, $id]);
+        if ($exists->fetchColumn()) {
+            $error = "Deze gebruikersnaam is al in gebruik door een andere gebruiker.";
+        } else {
+            if ($password !== '') {
+                $stmt = $pdo->prepare("UPDATE users SET username = ?, email = ?, role = ?, website_id = ?, password_hash = ? WHERE id = ?");
+                $stmt->execute([$username, $email, $role, $role === 'client' ? $user_website_id : null, password_hash($password, PASSWORD_DEFAULT), $id]);
+                forget_all_remember_tokens_for_user($id);
+            } else {
+                $stmt = $pdo->prepare("UPDATE users SET username = ?, email = ?, role = ?, website_id = ? WHERE id = ?");
+                $stmt->execute([$username, $email, $role, $role === 'client' ? $user_website_id : null, $id]);
+            }
+            $message = "Gebruiker '{$username}' is bijgewerkt.";
+        }
+    }
+    $active_tab = 'gebruikers';
+}
+
 // --- GEBRUIKER ACTIVEREN/DEACTIVEREN ---
 if (isset($_POST['action']) && $_POST['action'] === 'toggle_user') {
     csrf_verify();
@@ -432,43 +476,81 @@ $users = $pdo->query("
 
                 <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <h2 class="text-lg font-bold mb-4">Bestaande Gebruikers</h2>
-                    <div class="overflow-x-auto border rounded-lg border-gray-200">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Gebruiker</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Rol</th>
-                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Website</th>
-                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actie</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 bg-white">
-                                <?php foreach ($users as $u): ?>
-                                    <tr>
-                                        <td class="px-4 py-3">
-                                            <div class="font-medium text-gray-900"><?php echo htmlspecialchars($u['username']); ?></div>
-                                            <div class="text-xs text-gray-500"><?php echo htmlspecialchars($u['email']); ?></div>
-                                        </td>
-                                        <td class="px-4 py-3 text-sm text-gray-600"><?php echo $u['role'] === 'super_admin' ? 'Super Admin' : 'Client'; ?></td>
-                                        <td class="px-4 py-3 text-sm text-gray-600"><?php echo htmlspecialchars($u['company_name'] ?? '—'); ?></td>
-                                        <td class="px-4 py-3 text-right whitespace-nowrap">
-                                            <form method="POST" action="super_websites.php?tab=gebruikers" class="inline">
-                                                <?php echo csrf_field(); ?>
-                                                <input type="hidden" name="action" value="toggle_user">
-                                                <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($u['id']); ?>">
-                                                <button type="submit" class="text-xs font-bold px-2 py-1 rounded-full <?php echo $u['is_active'] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'; ?>"><?php echo $u['is_active'] ? 'Actief' : 'Inactief'; ?></button>
-                                            </form>
-                                            <form method="POST" action="super_websites.php?tab=gebruikers" class="inline" onsubmit="return confirm('Deze gebruiker definitief verwijderen?');">
-                                                <?php echo csrf_field(); ?>
-                                                <input type="hidden" name="action" value="delete_user">
-                                                <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($u['id']); ?>">
-                                                <button type="submit" class="text-red-500 hover:text-red-700 font-medium text-sm ml-2">Verwijder</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                    <div class="space-y-3">
+                        <?php foreach ($users as $u): ?>
+                            <details class="border border-gray-200 rounded-lg">
+                                <summary class="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="font-medium text-gray-900 truncate"><?php echo htmlspecialchars($u['username']); ?> <?php if ($u['id'] === current_user_id()): ?><span class="text-xs text-gray-400 font-normal">(jij)</span><?php endif; ?></div>
+                                        <div class="text-xs text-gray-500 truncate"><?php echo htmlspecialchars($u['email']); ?> &middot; <?php echo $u['role'] === 'super_admin' ? 'Super Admin' : 'Client'; ?><?php if ($u['company_name']): ?> &middot; <?php echo htmlspecialchars($u['company_name']); ?><?php endif; ?></div>
+                                    </div>
+                                    <span class="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0 <?php echo $u['is_active'] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'; ?>"><?php echo $u['is_active'] ? 'Actief' : 'Inactief'; ?></span>
+                                </summary>
+                                <div class="border-t border-gray-100 p-4">
+                                    <form method="POST" action="super_websites.php?tab=gebruikers" class="space-y-4">
+                                        <?php echo csrf_field(); ?>
+                                        <input type="hidden" name="action" value="update_user">
+                                        <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($u['id']); ?>">
+                                        <div class="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Gebruikersnaam</label>
+                                                <input type="text" name="username" required value="<?php echo htmlspecialchars($u['username']); ?>" class="w-full border-gray-300 rounded-md border p-2">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">E-mailadres</label>
+                                                <input type="email" name="email" required value="<?php echo htmlspecialchars($u['email']); ?>" class="w-full border-gray-300 rounded-md border p-2">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Nieuw wachtwoord</label>
+                                            <input type="password" name="password" minlength="8" placeholder="Laat leeg om ongewijzigd te laten" class="w-full border-gray-300 rounded-md border p-2">
+                                        </div>
+                                        <div class="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                                                <select name="role" class="edit-role-select w-full border-gray-300 rounded-md border p-2 bg-white" <?php echo $u['id'] === current_user_id() ? 'disabled' : ''; ?> onchange="this.closest('form').querySelector('.edit-website-wrap').classList.toggle('hidden', this.value === 'super_admin')">
+                                                    <option value="client" <?php echo $u['role'] === 'client' ? 'selected' : ''; ?>>Client (beheert 1 website)</option>
+                                                    <option value="super_admin" <?php echo $u['role'] === 'super_admin' ? 'selected' : ''; ?>>Super Admin (beheert alle websites)</option>
+                                                </select>
+                                                <?php if ($u['id'] === current_user_id()): ?>
+                                                    <input type="hidden" name="role" value="<?php echo htmlspecialchars($u['role']); ?>">
+                                                    <p class="text-xs text-gray-400 mt-1">Je kunt je eigen rol niet wijzigen.</p>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="edit-website-wrap <?php echo $u['role'] === 'super_admin' ? 'hidden' : ''; ?>">
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                                                <select name="user_website_id" class="w-full border-gray-300 rounded-md border p-2 bg-white">
+                                                    <option value="">-- kies een website --</option>
+                                                    <?php foreach ($websites as $w): ?>
+                                                        <option value="<?php echo htmlspecialchars($w['id']); ?>" <?php echo $u['website_id'] === $w['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($w['company_name']); ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between pt-2">
+                                            <button type="submit" class="bg-slate-900 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-800 transition-colors">Opslaan</button>
+                                        </div>
+                                    </form>
+                                    <div class="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+                                        <form method="POST" action="super_websites.php?tab=gebruikers" class="inline">
+                                            <?php echo csrf_field(); ?>
+                                            <input type="hidden" name="action" value="toggle_user">
+                                            <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($u['id']); ?>">
+                                            <button type="submit" class="text-xs font-bold px-2 py-1 rounded-full <?php echo $u['is_active'] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'; ?>"><?php echo $u['is_active'] ? 'Actief' : 'Inactief'; ?></button>
+                                        </form>
+                                        <form method="POST" action="super_websites.php?tab=gebruikers" class="inline" onsubmit="return confirm('Deze gebruiker definitief verwijderen?');">
+                                            <?php echo csrf_field(); ?>
+                                            <input type="hidden" name="action" value="delete_user">
+                                            <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($u['id']); ?>">
+                                            <button type="submit" class="text-red-500 hover:text-red-700 font-medium text-sm ml-2">Verwijder</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </details>
+                        <?php endforeach; ?>
+                        <?php if (empty($users)): ?>
+                            <p class="text-gray-500 italic">Nog geen gebruikers aangemaakt.</p>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

@@ -123,7 +123,7 @@ $kaarten = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
                     <span>Sleep-modus: UIT</span>
                 </button>
-                <a href="cadeaukaarten.php" target="_blank" class="bg-pink-100 text-pink-700 font-bold py-2 px-6 rounded-full hover:bg-pink-200 transition-colors">
+                <a href="<?php echo htmlspecialchars(public_site_url('cadeaukaarten.php')); ?>" target="_blank" class="bg-pink-100 text-pink-700 font-bold py-2 px-6 rounded-full hover:bg-pink-200 transition-colors">
                     Bekijk publiek &rarr;
                 </a>
             </div>

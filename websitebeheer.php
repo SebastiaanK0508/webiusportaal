@@ -183,6 +183,42 @@ if (isset($_POST['delete_faq'])) {
     $active_tab = 'faq';
 }
 
+// --- 7. VERWERK TEAM ---
+if (isset($_POST['add_team_member'])) {
+    csrf_verify();
+    $naam = trim($_POST['team_naam'] ?? '');
+    $functie = trim($_POST['team_functie'] ?? '');
+    if ($naam !== '' && $functie !== '') {
+        $max_order = $pdo->prepare("SELECT COALESCE(MAX(sort_order), 0) FROM team_members WHERE website_id = ?");
+        $max_order->execute([$website_id]);
+        $new_order = (int)$max_order->fetchColumn() + 1;
+
+        $new_team_id = $pdo->query('SELECT UUID()')->fetchColumn();
+        $stmt = $pdo->prepare("INSERT INTO team_members (id, website_id, naam, functie, sort_order) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$new_team_id, $website_id, $naam, $functie, $new_order]);
+        $message = "Teamlid toegevoegd!";
+    }
+    $active_tab = 'team';
+}
+if (isset($_POST['update_team_member'])) {
+    csrf_verify();
+    $naam = trim($_POST['team_naam'] ?? '');
+    $functie = trim($_POST['team_functie'] ?? '');
+    if ($naam !== '' && $functie !== '') {
+        $stmt = $pdo->prepare("UPDATE team_members SET naam = ?, functie = ? WHERE id = ? AND website_id = ?");
+        $stmt->execute([$naam, $functie, $_POST['update_team_member'], $website_id]);
+        $message = "Teamlid bijgewerkt!";
+    }
+    $active_tab = 'team';
+}
+if (isset($_POST['delete_team_member'])) {
+    csrf_verify();
+    $stmt = $pdo->prepare("DELETE FROM team_members WHERE id = ? AND website_id = ?");
+    $stmt->execute([$_POST['delete_team_member'], $website_id]);
+    $message = "Teamlid verwijderd!";
+    $active_tab = 'team';
+}
+
 $algemeen_content = $pdo->prepare("SELECT * FROM site_content WHERE website_id = ? AND section_key NOT LIKE 'service_%' AND section_key NOT LIKE '%\\_image%' ORDER BY page, section_key");
 $algemeen_content->execute([$website_id]);
 $algemeen_content = $algemeen_content->fetchAll();
@@ -202,6 +238,10 @@ $all_faqs = $all_faqs->fetchAll();
 $all_portfolio = $pdo->prepare("SELECT * FROM portfolio WHERE website_id = ? ORDER BY created_at DESC");
 $all_portfolio->execute([$website_id]);
 $all_portfolio = $all_portfolio->fetchAll();
+
+$all_team_members = $pdo->prepare("SELECT * FROM team_members WHERE website_id = ? ORDER BY sort_order ASC, created_at ASC");
+$all_team_members->execute([$website_id]);
+$all_team_members = $all_team_members->fetchAll();
 
 $usp_custom_values = get_custom_field_value_map('usp', array_column($all_usps, 'id'));
 $review_custom_values = get_custom_field_value_map('review', array_column($all_reviews, 'id'));
@@ -243,7 +283,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
     <div class="max-w-6xl mx-auto px-4 mt-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <h1 class="text-3xl font-bold text-gray-800">Homepagina <?php echo get_text('hero_title'); ?></h1>
-            <a href="index.php" target="_blank" class="text-pink-600 hover:text-white font-bold bg-white hover:bg-pink-600 px-6 py-2 rounded-full shadow border border-pink-100 transition-all">Bekijk website &rarr;</a>
+            <a href="<?php echo htmlspecialchars(public_site_url('index.php')); ?>" target="_blank" class="text-pink-600 hover:text-white font-bold bg-white hover:bg-pink-600 px-6 py-2 rounded-full shadow border border-pink-100 transition-all">Bekijk website &rarr;</a>
         </div>
         <?php if ($error): ?>
             <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 shadow-sm rounded-r-lg">
@@ -270,7 +310,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
         <div class="border-b border-gray-200 mb-6 bg-white rounded-t-xl shadow-sm overflow-x-auto">
             <nav class="-mb-px flex space-x-6 px-4">
                 <?php
-                $tabs = ['algemeen' => 'Algemene Teksten', 'images' => 'Afbeeldingen', 'producten' => 'Producten (Home)', 'portfolio' => 'Portfolio', 'usps' => 'USP\'s', 'reviews' => 'Reviews', 'faq' => 'FAQ'];
+                $tabs = ['algemeen' => 'Algemene Teksten', 'images' => 'Afbeeldingen', 'producten' => 'Producten (Home)', 'portfolio' => 'Portfolio', 'usps' => 'USP\'s', 'reviews' => 'Reviews', 'faq' => 'FAQ', 'team' => 'Team'];
                 foreach($tabs as $key => $label):
                     $is_active = ($active_tab == $key);
                 ?>
@@ -300,6 +340,11 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                     'home' => ['icon' => '🏠', 'title' => 'Homepagina'],
                     'about' => ['icon' => '👩', 'title' => 'Over Ons pagina'],
                     'contact' => ['icon' => '✉️', 'title' => 'Contactpagina'],
+                    'assortiment' => ['icon' => '🛒', 'title' => 'Assortiment pagina'],
+                    'cadeaukaarten' => ['icon' => '🎁', 'title' => 'Cadeaukaarten pagina'],
+                    'nieuws' => ['icon' => '📰', 'title' => 'Nieuws pagina'],
+                    'prijsvraag' => ['icon' => '🏆', 'title' => 'Prijsvraag pagina'],
+                    'geschiedenis' => ['icon' => '📜', 'title' => 'Geschiedenis pagina'],
                     'algemeen' => ['icon' => '⚙️', 'title' => 'Algemeen (overal op de site)'],
                 ];
                 $group_meta = [
@@ -308,11 +353,16 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                     'story' => ['icon' => '📖', 'title' => 'Het Verhaal', 'desc' => 'De lopende tekst op de Over Ons-pagina.'],
                     'promo' => ['icon' => '🎁', 'title' => 'Aanbieding / Actie', 'desc' => 'Licht een tijdelijke actie uit.'],
                     'portfolio' => ['icon' => '📸', 'title' => 'Portfolio Sectie', 'desc' => 'Instellingen voor de fotogalerij.'],
-                    'info' => ['icon' => 'ℹ️', 'title' => 'Contactgegevens', 'desc' => 'Adres, telefoon en e-mail op de contactpagina.'],
+                    'info' => ['icon' => 'ℹ️', 'title' => 'Contactgegevens', 'desc' => 'Adres, telefoon en e-mail op de contactpagina — deze gegevens komen ook terug in de footer en op de geschiedenispagina.'],
                     'contact' => ['icon' => '☎️', 'title' => 'Contactgegevens', 'desc' => 'Gegevens die elders op de site worden getoond (bijv. footer).'],
                     'social' => ['icon' => '📱', 'title' => 'Social Media', 'desc' => 'Links naar social-mediakanalen.'],
                     'footer' => ['icon' => '📄', 'title' => 'Footer', 'desc' => 'Tekst onderaan de website.'],
                     'bedrijfsgegevens' => ['icon' => '🏢', 'title' => 'Bedrijfsgegevens', 'desc' => 'KVK, BTW en andere juridische gegevens.'],
+                    'wettelijk' => ['icon' => '⚖️', 'title' => 'Wettelijke tekst', 'desc' => 'Verplichte tekst, bijv. rondom leeftijdsgrenzen.'],
+                    'waarschuwing' => ['icon' => '⚠️', 'title' => 'Melding', 'desc' => 'Zet de zichtbaarheid uit zodra dit niet meer van toepassing is.'],
+                    'overig' => ['icon' => '📄', 'title' => 'Overige teksten', 'desc' => ''],
+                    'cta' => ['icon' => '📣', 'title' => 'Oproep-blok (CTA)', 'desc' => 'Het blok onderaan de pagina dat bezoekers naar de winkel/contact stuurt.'],
+                    'diensten' => ['icon' => '🧩', 'title' => 'Diensten-tegels', 'desc' => 'De tegels op de homepage. Iconen en links zijn vast; titel en beschrijving zijn hier aan te passen.'],
                 ];
                 $labels = [
                     'hero_title' => 'Grote Hoofdtitel',
@@ -324,7 +374,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                     'portfolio_title' => 'Titel boven fotogalerij'
                 ];
 
-                $page_order = ['home', 'about', 'contact', 'algemeen'];
+                $page_order = ['home', 'about', 'contact', 'assortiment', 'cadeaukaarten', 'nieuws', 'prijsvraag', 'geschiedenis', 'algemeen'];
                 $grouped_pages = [];
                 foreach ($algemeen_content as $item) {
                     $page = $item['page'];
@@ -620,6 +670,36 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                 <textarea name="faq_a" rows="3" required placeholder="Het antwoord..." class="w-full px-4 py-2 border rounded-md mb-4"></textarea>
                 <?php render_custom_field_inputs('faq'); ?>
                 <button type="submit" name="add_faq" class="bg-gray-800 text-white font-bold py-2 px-6 rounded-lg mt-4">+ Vraag Toevoegen</button>
+            </form>
+        </div>
+
+        <!-- TEAM TAB -->
+        <div id="team" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'team' ? 'hidden' : ''; ?>">
+            <p class="text-gray-500 text-sm mb-6">De teamleden die getoond worden op de "Over Ons"-pagina.</p>
+            <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+                <?php foreach ($all_team_members as $lid): ?>
+                    <form method="POST" action="websitebeheer.php?tab=team" class="bg-white border border-gray-200 p-4 rounded-lg space-y-2">
+                        <?php echo csrf_field(); ?>
+                        <input type="text" name="team_naam" required value="<?php echo htmlspecialchars($lid['naam']); ?>" placeholder="Naam" class="w-full px-3 py-1.5 border border-gray-200 rounded-md text-sm font-bold text-gray-800">
+                        <input type="text" name="team_functie" required value="<?php echo htmlspecialchars($lid['functie']); ?>" placeholder="Functie" class="w-full px-3 py-1.5 border border-gray-200 rounded-md text-sm text-gray-600">
+                        <div class="flex justify-between items-center pt-1">
+                            <button type="submit" name="update_team_member" value="<?php echo htmlspecialchars($lid['id']); ?>" class="text-xs font-bold text-pink-600 hover:text-pink-700">Opslaan</button>
+                            <button type="submit" name="delete_team_member" value="<?php echo htmlspecialchars($lid['id']); ?>" onclick="return confirm('Dit teamlid verwijderen?');" class="text-red-500 hover:text-red-700 font-bold border p-1 rounded text-xs">Verwijder</button>
+                        </div>
+                    </form>
+                <?php endforeach; ?>
+                <?php if (empty($all_team_members)): ?>
+                    <p class="text-gray-400 italic col-span-full">Nog geen teamleden toegevoegd.</p>
+                <?php endif; ?>
+            </div>
+            <form method="POST" action="websitebeheer.php?tab=<?php echo $active_tab; ?>" class="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                <?php echo csrf_field(); ?>
+                <h2 class="font-bold mb-4">Nieuw Teamlid Toevoegen</h2>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <input type="text" name="team_naam" required placeholder="Naam" class="w-full px-4 py-2 border rounded-md">
+                    <input type="text" name="team_functie" required placeholder="Functie (bijv. Medewerker)" class="w-full px-4 py-2 border rounded-md">
+                </div>
+                <button type="submit" name="add_team_member" class="bg-gray-800 text-white font-bold py-2 px-6 rounded-lg mt-4">+ Teamlid Toevoegen</button>
             </form>
         </div>
     </div>

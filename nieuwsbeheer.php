@@ -101,7 +101,7 @@ $artikelen = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <h1 class="text-3xl font-extrabold text-slate-900">Nieuws Beheer</h1>
                 <p class="text-gray-500 mt-1">Plaats nieuwsartikelen op de website.</p>
             </div>
-            <a href="nieuws.php" target="_blank" class="bg-pink-100 text-pink-700 font-bold py-2 px-6 rounded-full hover:bg-pink-200 transition-colors mt-4 md:mt-0">
+            <a href="<?php echo htmlspecialchars(public_site_url('nieuws.php')); ?>" target="_blank" class="bg-pink-100 text-pink-700 font-bold py-2 px-6 rounded-full hover:bg-pink-200 transition-colors mt-4 md:mt-0">
                 Bekijk publiek &rarr;
             </a>
         </div>

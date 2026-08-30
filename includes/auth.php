@@ -92,3 +92,16 @@ function current_website(): ?array
     $site = $stmt->fetch() ?: null;
     return $site;
 }
+
+// Bouwt de live URL naar een pagina op de publieke website van de huidige klant
+// (elke klant heeft z'n eigen domain_name — dit mag dus nooit een relatief pad
+// binnen het portaal zelf zijn, anders opent "Bekijk pagina" altijd dezelfde site).
+function public_site_url(string $path = ''): string
+{
+    $site = current_website();
+    $domain = trim($site['domain_name'] ?? '', "/ \t\n\r\0\x0B");
+    if ($domain === '') {
+        return '#';
+    }
+    return 'https://' . $domain . '/' . ltrim($path, '/');
+}

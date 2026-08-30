@@ -10,3 +10,9 @@ require_once __DIR__ . '/upload.php';
 require_once __DIR__ . '/rate_limit.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/custom_fields.php';
+require_once __DIR__ . '/remember_me.php';
+
+// Nog geen sessie, maar wel een geldig "onthoud mij"-cookie? Dan hier
+// stilzwijgend inloggen vóórdat de pagina zelf is_logged_in()/require_login()
+// aanroept.
+attempt_remember_login();

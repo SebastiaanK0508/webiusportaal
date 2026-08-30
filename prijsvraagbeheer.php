@@ -68,7 +68,7 @@ $inzendingen = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="max-w-6xl mx-auto px-4 mt-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <h1 class="text-3xl font-bold text-gray-800">Prijsvraag Beheer</h1>
-            <a href="prijsvraag.php" target="_blank" class="text-pink-600 hover:text-white font-bold bg-white hover:bg-pink-600 px-6 py-2 rounded-full shadow border border-pink-100 transition-all">Bekijk pagina &rarr;</a>
+            <a href="<?php echo htmlspecialchars(public_site_url('prijsvraag.php')); ?>" target="_blank" class="text-pink-600 hover:text-white font-bold bg-white hover:bg-pink-600 px-6 py-2 rounded-full shadow border border-pink-100 transition-all">Bekijk pagina &rarr;</a>
         </div>
 
         <?php if ($message): ?>

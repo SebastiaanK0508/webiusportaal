@@ -34,6 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['role']       = $user['role'];
                 $_SESSION['website_id'] = $user['website_id'];
 
+                if (!empty($_POST['remember_me'])) {
+                    issue_remember_token($user['id']);
+                }
+
                 $update_stmt = $pdo->prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?");
                 $update_stmt->execute([$user['id']]);
 
@@ -54,9 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php include 'includes/head.php'; ?>
 </head>
 <body class="bg-gray-50 font-sans flex items-center justify-center min-h-screen selection:bg-pink-200 selection:text-pink-900 relative overflow-hidden">
-    <div class="absolute top-0 left-0 w-full h-96 bg-pink-600 transform -skew-y-6 origin-top-left -z-10 shadow-xl opacity-90"></div>
-    <div class="absolute bottom-0 right-0 w-96 h-96 bg-pink-200 rounded-full blur-3xl -z-10 opacity-30 transform translate-x-1/2 translate-y-1/2"></div>
-    <div class="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 relative z-10">
+    <div class="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 relative z-10 border-t-4 border-t-pink-600">
         <div class="text-center mb-8">
             <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-pink-200">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z"></path></svg>
@@ -103,6 +105,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </button>
                 </div>
             </div>
+            <label class="flex items-center gap-2 select-none cursor-pointer">
+                <input type="checkbox" name="remember_me" value="1" class="w-4 h-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500 focus:ring-2 cursor-pointer">
+                <span class="text-sm text-gray-600 font-medium">Onthoud mij op dit apparaat</span>
+            </label>
             <button type="submit" class="w-full bg-pink-600 text-white font-bold py-3.5 rounded-xl hover:bg-pink-700 hover:shadow-lg hover:shadow-pink-500/30 transform hover:-translate-y-0.5 transition-all duration-200 mt-4 flex justify-center items-center gap-2">
                 Veilig Inloggen
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>

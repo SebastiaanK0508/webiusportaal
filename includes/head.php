@@ -6,6 +6,30 @@ $brand_primary   = $__branding['color_primary'] ?? '#db2777';   // pink-600, hui
 $brand_secondary = $__branding['color_secondary'] ?? '#fce7f3'; // pink-100
 $brand_accent    = $__branding['color_accent'] ?? '#1f2937';    // slate-800
 $brand_font      = $__branding['font_family'] ?? 'Outfit';
+
+// Bepaalt of witte of donkere knoptekst leesbaar blijft op de gekozen tint —
+// zodat een beheerder een lichte huisstijlkleur kan kiezen zonder dat de
+// "Opslaan"-knoppen (en hun hover-state) onleesbaar worden.
+function brand_contrast_color(string $hex): string
+{
+    $hex = ltrim(trim($hex), '#');
+    if (strlen($hex) === 3) {
+        $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+    }
+    if (!preg_match('/^[0-9a-fA-F]{6}$/', $hex)) {
+        return '#ffffff';
+    }
+    $channel = function (int $c) {
+        $c = $c / 255;
+        return $c <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4;
+    };
+    $r = $channel(hexdec(substr($hex, 0, 2)));
+    $g = $channel(hexdec(substr($hex, 2, 2)));
+    $b = $channel(hexdec(substr($hex, 4, 2)));
+    $luminance = 0.2126 * $r + 0.7152 * $g + 0.0722 * $b;
+    return $luminance > 0.179 ? '#1f2937' : '#ffffff';
+}
+$brand_contrast = brand_contrast_color($brand_primary);
 ?>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,6 +69,7 @@ $brand_font      = $__branding['font_family'] ?? 'Outfit';
         --brand-700: color-mix(in srgb, var(--brand-primary) 85%, black);
         --brand-800: color-mix(in srgb, var(--brand-primary) 70%, black);
         --brand-900: color-mix(in srgb, var(--brand-primary) 55%, black);
+        --brand-contrast: <?php echo htmlspecialchars($brand_contrast); ?>;
     }
     body { font-family: '<?php echo htmlspecialchars($brand_font); ?>', sans-serif; }
 
@@ -95,4 +120,18 @@ $brand_font      = $__branding['font_family'] ?? 'Outfit';
     .selection\:bg-pink-200 ::selection { background-color: var(--brand-200) !important; }
     .selection\:text-pink-900 ::selection { color: var(--brand-900) !important; }
     .shadow-pink-600 { --tw-shadow-color: var(--brand-600) !important; }
+    .shadow-pink-600\/20 { --tw-shadow-color: color-mix(in srgb, var(--brand-600) 20%, transparent) !important; }
+    .shadow-pink-600\/30 { --tw-shadow-color: color-mix(in srgb, var(--brand-600) 30%, transparent) !important; }
+    .shadow-pink-600\/40 { --tw-shadow-color: color-mix(in srgb, var(--brand-600) 40%, transparent) !important; }
+    .shadow-pink-500\/30 { --tw-shadow-color: color-mix(in srgb, var(--brand-500) 30%, transparent) !important; }
+
+    /* Leesbaarheid: op gevulde brand-knoppen (en hun hover-state) altijd de
+       tekstkleur gebruiken die contrasteert met de gekozen tint, in plaats van
+       vast wit — anders wordt tekst onleesbaar zodra een lichte tint gekozen is. */
+    .bg-pink-500, .bg-pink-600, .bg-pink-700,
+    .hover\:bg-pink-600:hover, .hover\:bg-pink-700:hover,
+    .peer:checked ~ .peer-checked\:bg-pink-500,
+    .peer:checked ~ .peer-checked\:bg-pink-600 {
+        color: var(--brand-contrast) !important;
+    }
 </style>

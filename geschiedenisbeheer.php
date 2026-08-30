@@ -48,7 +48,7 @@ $geschiedenis = $stmt->fetch();
                 <h1 class="text-3xl font-bold text-gray-800">Geschiedenis</h1>
                 <p class="text-gray-500 mt-1">Beheer hier de tekst van de geschiedenis-pagina. Deze pagina is alleen zichtbaar op websites waar de module "Geschiedenis" is ingeschakeld.</p>
             </div>
-            <a href="geschiedenis.php" target="_blank" class="text-pink-600 hover:text-white font-bold bg-white hover:bg-pink-600 px-6 py-2 rounded-full shadow border border-pink-100 transition-all">Bekijk pagina &rarr;</a>
+            <a href="<?php echo htmlspecialchars(public_site_url('geschiedenis.php')); ?>" target="_blank" class="text-pink-600 hover:text-white font-bold bg-white hover:bg-pink-600 px-6 py-2 rounded-full shadow border border-pink-100 transition-all">Bekijk pagina &rarr;</a>
         </div>
 
         <?php if ($message): ?>

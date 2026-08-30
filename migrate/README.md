@@ -84,3 +84,18 @@ volgorde.
 - Verwijder of verplaats deze `migrate/`-map niet uit git totdat de migratie
   succesvol is uitgevoerd — de scripts zijn ook nuttig als referentie mocht
   er iets misgaan.
+
+10. **`009_remember_tokens.sql`** — voegt de tabel toe voor de "Onthoud
+    mij"-optie op `login.php` (`includes/remember_me.php`). Veilig, additief,
+    geen bestaande data wordt aangeraakt. Tot deze migratie is toegepast
+    werkt inloggen gewoon door, alleen staat "onthoud mij" dan stilzwijgend
+    uit (zelfde fail-safe patroon als `login_attempts`).
+11. **`010_editable_content_expansion.sql`** — maakt een reeks voorheen
+    hardcoded teksten op debandijk bewerkbaar via `websitebeheer.php`
+    (hero-teksten van assortiment/cadeaukaarten/nieuws/prijsvraag/
+    geschiedenis, de wettelijke tabakstekst, de "in ontwikkeling"-melding,
+    de CTA op de geschiedenispagina en de tekst van de diensten-tegels op
+    de homepage), zet de 3 bestaande FAQ's op de contactpagina om naar
+    rijen in `faqs` (tab FAQ), en voegt de nieuwe tabel `team_members` toe
+    (tab Team) met de 6 bestaande teamleden als startdata. Idempotent —
+    veilig om opnieuw te draaien, overschrijft geen latere bewerkingen.

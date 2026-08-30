@@ -61,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $update_pw_stmt = $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
 
             if ($update_pw_stmt->execute([$new_hash, current_user_id()])) {
+                forget_all_remember_tokens_for_user(current_user_id());
                 $message = "Je wachtwoord is succesvol gewijzigd!";
                 $msg_type = 'success';
             } else {
