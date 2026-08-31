@@ -136,6 +136,14 @@ function get_footer_setting($sleutel)
     return $resultaat !== false ? $resultaat : '';
 }
 
+function get_footer_links($kolom)
+{
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT * FROM footer_links WHERE website_id = ? AND kolom = ? ORDER BY sort_order ASC, created_at ASC");
+    $stmt->execute([current_website_id(), $kolom]);
+    return $stmt->fetchAll();
+}
+
 function get_app_setting($key, $default = '')
 {
     global $pdo;

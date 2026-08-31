@@ -36,6 +36,49 @@ if (isset($_POST['update_info'])) {
     $message = "Informatie tekst succesvol bijgewerkt!";
 }
 
+$footer_link_kolommen = ['services' => 'Services', 'navigatie' => 'Navigatie'];
+
+if (isset($_POST['add_footer_link'])) {
+    csrf_verify();
+    $kolom = $_POST['kolom'] ?? '';
+    $label = trim($_POST['label'] ?? '');
+    $url = trim($_POST['url'] ?? '');
+    if (isset($footer_link_kolommen[$kolom]) && $label !== '' && $url !== '') {
+        $max_order = $pdo->prepare("SELECT COALESCE(MAX(sort_order), 0) FROM footer_links WHERE website_id = ? AND kolom = ?");
+        $max_order->execute([$website_id, $kolom]);
+        $new_order = (int)$max_order->fetchColumn() + 1;
+
+        $new_id = $pdo->query('SELECT UUID()')->fetchColumn();
+        $stmt = $pdo->prepare("INSERT INTO footer_links (id, website_id, kolom, label, url, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$new_id, $website_id, $kolom, $label, $url, $new_order]);
+        $message = "Link toegevoegd!";
+    }
+    $active_tab = 'tab-links';
+}
+if (isset($_POST['update_footer_link'])) {
+    csrf_verify();
+    $label = trim($_POST['label'] ?? '');
+    $url = trim($_POST['url'] ?? '');
+    if ($label !== '' && $url !== '') {
+        $stmt = $pdo->prepare("UPDATE footer_links SET label = ?, url = ? WHERE id = ? AND website_id = ?");
+        $stmt->execute([$label, $url, $_POST['update_footer_link'], $website_id]);
+        $message = "Link bijgewerkt!";
+    }
+    $active_tab = 'tab-links';
+}
+if (isset($_POST['delete_footer_link'])) {
+    csrf_verify();
+    $stmt = $pdo->prepare("DELETE FROM footer_links WHERE id = ? AND website_id = ?");
+    $stmt->execute([$_POST['delete_footer_link'], $website_id]);
+    $message = "Link verwijderd!";
+    $active_tab = 'tab-links';
+}
+
+$footer_links = [];
+foreach (array_keys($footer_link_kolommen) as $kolom) {
+    $footer_links[$kolom] = get_footer_links($kolom);
+}
+
 $footer_data = [];
 $stmt = $pdo->prepare("SELECT sleutel, waarde FROM footer WHERE website_id = ?");
 $stmt->execute([$website_id]);
@@ -85,6 +128,7 @@ while ($row = $stmt->fetch()) {
                 <?php
                 $tabs = [
                     'tab-socials' => 'Social Media',
+                    'tab-links' => 'Links',
                     'tab-info' => 'Tekst',
                     'tab-contact' => 'Contactgegevens',
                     'tab-bedrijf' => 'Bedrijfsgegevens'
@@ -147,6 +191,44 @@ while ($row = $stmt->fetch()) {
                     <input type="text" name="social_tiktok" placeholder="https://tiktok.com/@paginanaam" value="<?php echo htmlspecialchars($footer_data['social_tiktok'] ?? ''); ?>" class="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-400 text-sm transition-all">
                 </div>
             </form>
+        </div>
+        <div id="tab-links" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'tab-links' ? 'hidden' : ''; ?>">
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <h2 class="text-2xl font-bold text-gray-800">Footer Links</h2>
+            </div>
+            <p class="text-gray-500 text-sm mb-8">Beheer de links in de kolommen "Services" en "Navigatie" onderaan de website. Toevoegen, bewerken en verwijderen kan hieronder per kolom.</p>
+            <div class="grid md:grid-cols-2 gap-8">
+                <?php foreach ($footer_link_kolommen as $kolom => $kolom_label): ?>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-4"><?php echo htmlspecialchars($kolom_label); ?></h3>
+                        <div class="space-y-3 mb-6">
+                            <?php foreach ($footer_links[$kolom] as $link): ?>
+                                <form method="POST" action="footerbeheer.php?tab=tab-links" class="bg-gray-50 border border-gray-200 p-3 rounded-lg flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                                    <?php echo csrf_field(); ?>
+                                    <input type="text" name="label" required value="<?php echo htmlspecialchars($link['label']); ?>" placeholder="Tekst" class="w-full sm:w-1/3 px-3 py-1.5 border border-gray-200 rounded-md text-sm font-bold text-gray-800">
+                                    <input type="text" name="url" required value="<?php echo htmlspecialchars($link['url']); ?>" placeholder="Link (bijv. contact.php)" class="w-full flex-grow px-3 py-1.5 border border-gray-200 rounded-md text-sm text-gray-600">
+                                    <div class="flex gap-2 justify-end shrink-0">
+                                        <button type="submit" name="update_footer_link" value="<?php echo htmlspecialchars($link['id']); ?>" class="text-xs font-bold text-pink-600 hover:text-pink-700 px-2">Opslaan</button>
+                                        <button type="submit" name="delete_footer_link" value="<?php echo htmlspecialchars($link['id']); ?>" onclick="return confirm('Deze link verwijderen?');" class="text-red-500 hover:text-red-700 font-bold border p-1.5 rounded text-xs">Verwijder</button>
+                                    </div>
+                                </form>
+                            <?php endforeach; ?>
+                            <?php if (empty($footer_links[$kolom])): ?>
+                                <p class="text-gray-400 italic text-sm">Nog geen links in deze kolom.</p>
+                            <?php endif; ?>
+                        </div>
+                        <form method="POST" action="footerbeheer.php?tab=tab-links" class="bg-green-50 p-4 rounded-xl border border-green-100">
+                            <?php echo csrf_field(); ?>
+                            <input type="hidden" name="kolom" value="<?php echo htmlspecialchars($kolom); ?>">
+                            <div class="flex flex-col sm:flex-row gap-2 mb-3">
+                                <input type="text" name="label" required placeholder="Tekst (bijv. Contact)" class="w-full px-3 py-2 border rounded-md text-sm">
+                                <input type="text" name="url" required placeholder="Link (bijv. contact.php)" class="w-full px-3 py-2 border rounded-md text-sm">
+                            </div>
+                            <button type="submit" name="add_footer_link" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg text-sm">+ Link Toevoegen</button>
+                        </form>
+                    </div>
+                <?php endforeach; ?>
+            </div>
         </div>
         <div id="tab-info" class="tab-content bg-white p-6 rounded-b-xl shadow-md border border-gray-200 border-t-0 mb-6 <?php echo $active_tab !== 'tab-info' ? 'hidden' : ''; ?>">
             <form method="POST" action="footerbeheer.php?tab=tab-info">

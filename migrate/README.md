@@ -99,3 +99,11 @@ volgorde.
     rijen in `faqs` (tab FAQ), en voegt de nieuwe tabel `team_members` toe
     (tab Team) met de 6 bestaande teamleden als startdata. Idempotent —
     veilig om opnieuw te draaien, overschrijft geen latere bewerkingen.
+12. **`011_footer_links_and_meta_titles.sql`** — voegt de nieuwe tabel
+    `footer_links` toe (de "Services"- en "Navigatie"-links onderaan
+    debandijk, nu bewerkbaar via `footerbeheer.php` tab "Links" i.p.v.
+    hardcoded in `debandijk/footer.php`), geseed met de 9 links die er nu
+    hardcoded stonden. Voegt ook site_content-rijen toe voor de `<title>`-tag
+    van elke pagina (`meta_title`, tab "Algemene Teksten" op
+    `websitebeheer.php`) en de merknaam in de footer-kop (`site_naam`).
+    Idempotent — veilig om opnieuw te draaien.

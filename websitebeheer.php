@@ -362,6 +362,8 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                     'waarschuwing' => ['icon' => '⚠️', 'title' => 'Melding', 'desc' => 'Zet de zichtbaarheid uit zodra dit niet meer van toepassing is.'],
                     'overig' => ['icon' => '📄', 'title' => 'Overige teksten', 'desc' => ''],
                     'cta' => ['icon' => '📣', 'title' => 'Oproep-blok (CTA)', 'desc' => 'Het blok onderaan de pagina dat bezoekers naar de winkel/contact stuurt.'],
+                    'seo' => ['icon' => '🔍', 'title' => 'Titel in de browsertab', 'desc' => 'De tekst die bovenaan het browsertabblad en in zoekresultaten verschijnt.'],
+                    'branding' => ['icon' => '🏷️', 'title' => 'Merknaam', 'desc' => 'De naam die in de footer-kop van de website wordt getoond.'],
                     'diensten' => ['icon' => '🧩', 'title' => 'Diensten-tegels', 'desc' => 'De tegels op de homepage. Iconen en links zijn vast; titel en beschrijving zijn hier aan te passen.'],
                 ];
                 $labels = [
@@ -441,7 +443,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                                                             <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
                                                         </label>
                                                     </div>
-                                                    <?php if (strpos($key, 'title') !== false): ?>
+                                                    <?php if (strpos($key, 'title') !== false || $key === 'site_naam'): ?>
                                                         <input type="text" name="content[<?php echo htmlspecialchars($page_key); ?>][<?php echo htmlspecialchars($key); ?>]" value="<?php echo htmlspecialchars($item['content_text']); ?>" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-pink-400 focus:border-pink-400 text-sm transition-all">
                                                     <?php else: ?>
                                                         <textarea name="content[<?php echo htmlspecialchars($page_key); ?>][<?php echo htmlspecialchars($key); ?>]" rows="4" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-pink-400 focus:border-pink-400 text-sm transition-all"><?php echo htmlspecialchars($item['content_text']); ?></textarea>
