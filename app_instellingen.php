@@ -37,13 +37,7 @@ if (isset($_POST['save_app_settings'])) {
         </div>
 
         <?php if ($message): ?>
-            <div id="alert-message" class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 shadow-sm rounded flex justify-between items-center transition-all duration-500">
-                <div class="flex items-center gap-3">
-                    <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                    <span class="font-medium"><?php echo htmlspecialchars($message); ?></span>
-                </div>
-                <button onclick="document.getElementById('alert-message').style.display='none'" class="text-green-700 hover:text-green-900 font-bold ml-4 focus:outline-none text-xl leading-none">&times;</button>
-            </div>
+            <script>showToast(<?php echo json_encode($message); ?>, 'success');</script>
         <?php endif; ?>
 
         <form method="POST" action="app_instellingen.php">

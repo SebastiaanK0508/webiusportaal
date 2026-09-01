@@ -2,7 +2,7 @@
 require_once 'includes/init.php';
 require_website_context();
 
-$username = current_user()['username'] ?? 'Beheerder';
+$username = user_full_name(current_user());
 $website = current_website();
 $site_label = $website['company_name'] ?? 'Webius Portaal';
 $website_id = $website['id'];

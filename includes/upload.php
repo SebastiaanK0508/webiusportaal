@@ -21,7 +21,6 @@ function save_uploaded_image(string $field, string $websiteId, int $maxBytes = 5
 
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $mime = finfo_file($finfo, $file['tmp_name']);
-    finfo_close($finfo);
 
     $allowed = [
         'image/jpeg' => 'jpg',

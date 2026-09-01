@@ -3,7 +3,7 @@ require_once __DIR__ . '/init.php';
 require_login();
 
 $current_user_row = current_user();
-$admin_username = $current_user_row['username'] ?? 'Beheerder';
+$admin_username = user_full_name($current_user_row);
 $admin_email = !empty($current_user_row['email']) ? $current_user_row['email'] : 'Geen e-mailadres gekoppeld';
 
 $active_website = current_website();
@@ -301,8 +301,95 @@ if (current_website_id()) {
     </div>
 </header>
 
+<!-- Gedeelde meldingen-UI: 1x geladen op elke beheerpagina.
+     showToast(message, type) vervangt losse groene/rode banners,
+     confirmSubmit(event, message) vervangt native confirm() bij verwijder-acties. -->
+<div id="toast-container" class="fixed top-4 right-4 z-[200] flex flex-col gap-3 w-full max-w-sm pointer-events-none"></div>
+
+<div id="confirm-modal" class="hidden fixed inset-0 z-[150] flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeConfirmModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 text-center">
+        <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-3xl mx-auto mb-5">⚠️</div>
+        <h3 class="text-lg font-bold text-gray-800 mb-2">Weet je het zeker?</h3>
+        <p id="confirm-modal-text" class="text-sm text-gray-500 mb-6 leading-relaxed"></p>
+        <div class="flex gap-3">
+            <button type="button" onclick="closeConfirmModal()" class="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold hover:bg-gray-200 transition">Annuleren</button>
+            <button type="button" id="confirm-modal-ok" class="flex-1 py-2.5 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition shadow">Verwijderen</button>
+        </div>
+    </div>
+</div>
+
 <script>
+    // ---- Toasts ----
+    function showToast(message, type = 'success') {
+        if (!message) return;
+        const styles = {
+            success: { bg: 'bg-green-50', border: 'border-green-500', text: 'text-green-800', icon: '✓', iconBg: 'bg-green-500' },
+            error:   { bg: 'bg-red-50',   border: 'border-red-500',   text: 'text-red-800',   icon: '!', iconBg: 'bg-red-500' },
+            info:    { bg: 'bg-blue-50',  border: 'border-blue-500',  text: 'text-blue-800',   icon: 'i', iconBg: 'bg-blue-500' },
+        };
+        const s = styles[type] || styles.success;
+
+        const toast = document.createElement('div');
+        toast.className = `${s.bg} border-l-4 ${s.border} ${s.text} p-4 rounded-r-xl shadow-lg flex items-start gap-3 w-full pointer-events-auto transition-all duration-500 opacity-0 -translate-y-2`;
+
+        const iconEl = document.createElement('div');
+        iconEl.className = `${s.iconBg} text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 mt-0.5`;
+        iconEl.textContent = s.icon;
+
+        const textEl = document.createElement('p');
+        textEl.className = 'text-sm font-medium flex-1';
+        textEl.textContent = message;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'opacity-50 hover:opacity-100 font-bold text-lg leading-none transition ml-2';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.onclick = () => removeToast(toast);
+
+        toast.append(iconEl, textEl, closeBtn);
+        document.getElementById('toast-container').appendChild(toast);
+
+        requestAnimationFrame(() => toast.classList.remove('opacity-0', '-translate-y-2'));
+        setTimeout(() => removeToast(toast), 5000);
+    }
+
+    function removeToast(toast) {
+        toast.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => toast.remove(), 500);
+    }
+
+    // ---- Confirm-modal (vervangt window.confirm) ----
+    let _confirmCallback = null;
+
+    function showConfirmModal(message, onConfirm, options = {}) {
+        document.getElementById('confirm-modal-text').textContent = message;
+        const okBtn = document.getElementById('confirm-modal-ok');
+        okBtn.textContent = options.confirmLabel || 'Verwijderen';
+        okBtn.className = options.confirmClass || 'flex-1 py-2.5 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition shadow';
+        _confirmCallback = onConfirm;
+        document.getElementById('confirm-modal').classList.remove('hidden');
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirm-modal').classList.add('hidden');
+        _confirmCallback = null;
+    }
+
+    // Gebruik: onsubmit="return confirmSubmit(event, 'Weet je het zeker?')"
+    // of op een submit-knop: onclick="return confirmSubmit(event, '...')"
+    function confirmSubmit(event, message) {
+        event.preventDefault();
+        const form = event.target.closest('form');
+        showConfirmModal(message, () => form.submit());
+        return false;
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('confirm-modal-ok').addEventListener('click', function() {
+            if (_confirmCallback) _confirmCallback();
+            closeConfirmModal();
+        });
+
         const btn = document.getElementById('mobile-menu-button');
         const menu = document.getElementById('mobile-menu');
         const iconOpen = document.getElementById('menu-icon-open');

@@ -32,9 +32,38 @@ $geschiedenis = $stmt->fetch();
 
 <script src="https://cdn.ckeditor.com/ckeditor5/41.1.0/classic/ckeditor.js"></script>
 <script>
+    const GESCHIEDENIS_CSRF_TOKEN = <?php echo json_encode(csrf_token()); ?>;
+
+    class GeschiedenisUploadAdapter {
+        constructor(loader) {
+            this.loader = loader;
+        }
+        upload() {
+            return this.loader.file.then(file => new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('upload', file);
+                formData.append('csrf_token', GESCHIEDENIS_CSRF_TOKEN);
+                fetch('geschiedenis_image_upload.php', { method: 'POST', body: formData })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            reject(data.error.message);
+                        } else {
+                            resolve({ default: data.url });
+                        }
+                    })
+                    .catch(() => reject('De afbeelding kon niet worden geupload.'));
+            }));
+        }
+    }
+
+    function GeschiedenisUploadAdapterPlugin(editor) {
+        editor.plugins.get('FileRepository').createUploadAdapter = (loader) => new GeschiedenisUploadAdapter(loader);
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
         document.querySelectorAll('.rich-editor').forEach(element => {
-            ClassicEditor.create(element).catch(error => console.error(error));
+            ClassicEditor.create(element, { extraPlugins: [GeschiedenisUploadAdapterPlugin] }).catch(error => console.error(error));
         });
     });
 </script>
@@ -52,7 +81,7 @@ $geschiedenis = $stmt->fetch();
         </div>
 
         <?php if ($message): ?>
-            <div id="alert-message" class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 shadow-sm rounded-r-lg"><?php echo htmlspecialchars($message); ?></div>
+            <script>showToast(<?php echo json_encode($message); ?>, 'success');</script>
         <?php endif; ?>
 
         <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">

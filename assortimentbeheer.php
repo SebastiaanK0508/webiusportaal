@@ -237,21 +237,24 @@ foreach ($merken as $m) {
             Volgorde opgeslagen!
         </div>
 
-        <?php if (isset($_GET['msg'])): ?>
-            <div class="mb-8 p-4 rounded-lg font-medium
-                <?php echo (strpos($_GET['msg'], 'deleted') !== false || strpos($_GET['msg'], 'invalid') !== false || strpos($_GET['msg'], 'error') !== false) ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-green-100 text-green-800 border border-green-200'; ?>">
-                <?php
-                    if ($_GET['msg'] == 'cat_added') echo 'Categorie succesvol toegevoegd!';
-                    if ($_GET['msg'] == 'cat_updated') echo 'Categorie succesvol bijgewerkt!';
-                    if ($_GET['msg'] == 'cat_deleted') echo 'Categorie (en bijbehorende merken) verwijderd!';
-                    if ($_GET['msg'] == 'merk_added') echo 'Merk succesvol toegevoegd!';
-                    if ($_GET['msg'] == 'merk_updated') echo 'Merk succesvol bijgewerkt!';
-                    if ($_GET['msg'] == 'merk_deleted') echo 'Merk verwijderd!';
-                    if ($_GET['msg'] == 'invalid_category') echo 'Vul minimaal een titel in.';
-                    if ($_GET['msg'] == 'invalid_merk') echo 'Kies een categorie, vul een naam in en upload een logo.';
-                    if ($_GET['msg'] == 'upload_error') echo 'De afbeelding kon niet worden geupload.';
-                ?>
-            </div>
+        <?php if (isset($_GET['msg'])):
+            $__msg_map = [
+                'cat_added' => 'Categorie succesvol toegevoegd!',
+                'cat_updated' => 'Categorie succesvol bijgewerkt!',
+                'cat_deleted' => 'Categorie (en bijbehorende merken) verwijderd!',
+                'merk_added' => 'Merk succesvol toegevoegd!',
+                'merk_updated' => 'Merk succesvol bijgewerkt!',
+                'merk_deleted' => 'Merk verwijderd!',
+                'invalid_category' => 'Vul minimaal een titel in.',
+                'invalid_merk' => 'Kies een categorie, vul een naam in en upload een logo.',
+                'upload_error' => 'De afbeelding kon niet worden geupload.',
+            ];
+            $__msg_text = $__msg_map[$_GET['msg']] ?? null;
+            $__msg_type = (strpos($_GET['msg'], 'deleted') !== false || strpos($_GET['msg'], 'invalid') !== false || strpos($_GET['msg'], 'error') !== false) ? 'error' : 'success';
+        ?>
+            <?php if ($__msg_text): ?>
+                <script>showToast(<?php echo json_encode($__msg_text); ?>, <?php echo json_encode($__msg_type); ?>);</script>
+            <?php endif; ?>
         <?php endif; ?>
 
         <div class="mb-16">
@@ -335,7 +338,7 @@ foreach ($merken as $m) {
                             </table>
                         </div>
                         <?php foreach ($categorieen as $cat): ?>
-                            <form method="POST" action="assortimentbeheer.php" id="delete-cat-<?php echo htmlspecialchars($cat['id']); ?>" onsubmit="return confirm('Weet je het zeker? LET OP: Alle merken in deze categorie worden ook verwijderd!');" class="hidden">
+                            <form method="POST" action="assortimentbeheer.php" id="delete-cat-<?php echo htmlspecialchars($cat['id']); ?>" onsubmit="return confirmSubmit(event, 'Weet je het zeker? LET OP: Alle merken in deze categorie worden ook verwijderd!');" class="hidden">
                                 <?php echo csrf_field(); ?>
                                 <input type="hidden" name="delete_cat" value="<?php echo htmlspecialchars($cat['id']); ?>">
                             </form>
@@ -420,7 +423,7 @@ foreach ($merken as $m) {
                             </div>
                         <?php endforeach; ?>
                         <?php foreach ($merken as $m): ?>
-                            <form method="POST" action="assortimentbeheer.php" id="delete-merk-<?php echo htmlspecialchars($m['id']); ?>" onsubmit="return confirm('Weet je zeker dat je dit merk wilt verwijderen?');" class="hidden">
+                            <form method="POST" action="assortimentbeheer.php" id="delete-merk-<?php echo htmlspecialchars($m['id']); ?>" onsubmit="return confirmSubmit(event, 'Weet je zeker dat je dit merk wilt verwijderen?');" class="hidden">
                                 <?php echo csrf_field(); ?>
                                 <input type="hidden" name="delete_merk" value="<?php echo htmlspecialchars($m['id']); ?>">
                             </form>

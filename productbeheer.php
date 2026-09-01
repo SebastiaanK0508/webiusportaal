@@ -169,22 +169,21 @@ function render_custom_field_badges(array $items)
             Volgorde opgeslagen!
         </div>
 
-        <?php if(isset($_GET['msg'])): ?>
-            <div class="mb-8 p-4 rounded-lg font-medium
-                <?php
-                    echo (strpos($_GET['msg'], 'deleted') !== false || $_GET['msg'] === 'invalid_category')
-                    ? 'bg-red-100 text-red-800 border border-red-200'
-                    : 'bg-green-100 text-green-800 border border-green-200';
-                ?>">
-                <?php
-                    if($_GET['msg'] == 'cat_added') echo 'Categorie succesvol toegevoegd!';
-                    if($_GET['msg'] == 'cat_updated') echo 'Categorie namen succesvol bijgewerkt!';
-                    if($_GET['msg'] == 'cat_deleted') echo 'Categorie verwijderd!';
-                    if($_GET['msg'] == 'prod_added') echo 'Dienst succesvol toegevoegd!';
-                    if($_GET['msg'] == 'prod_deleted') echo 'Dienst verwijderd!';
-                    if($_GET['msg'] == 'invalid_category') echo 'Ongeldige categorie gekozen.';
-                ?>
-            </div>
+        <?php if (isset($_GET['msg'])):
+            $__msg_map = [
+                'cat_added' => 'Categorie succesvol toegevoegd!',
+                'cat_updated' => 'Categorie namen succesvol bijgewerkt!',
+                'cat_deleted' => 'Categorie verwijderd!',
+                'prod_added' => 'Dienst succesvol toegevoegd!',
+                'prod_deleted' => 'Dienst verwijderd!',
+                'invalid_category' => 'Ongeldige categorie gekozen.',
+            ];
+            $__msg_text = $__msg_map[$_GET['msg']] ?? null;
+            $__msg_type = (strpos($_GET['msg'], 'deleted') !== false || $_GET['msg'] === 'invalid_category') ? 'error' : 'success';
+        ?>
+            <?php if ($__msg_text): ?>
+                <script>showToast(<?php echo json_encode($__msg_text); ?>, <?php echo json_encode($__msg_type); ?>);</script>
+            <?php endif; ?>
         <?php endif; ?>
 
         <div class="mb-16">
@@ -255,7 +254,7 @@ function render_custom_field_badges(array $items)
                             </button>
                         </form>
                         <?php foreach ($categories as $cat): ?>
-                            <form method="POST" action="productbeheer.php" id="delete-cat-<?php echo htmlspecialchars($cat['id']); ?>" onsubmit="return confirm('Weet je het zeker? LET OP: Alle behandelingen in deze categorie worden ook verwijderd!');" class="hidden">
+                            <form method="POST" action="productbeheer.php" id="delete-cat-<?php echo htmlspecialchars($cat['id']); ?>" onsubmit="return confirmSubmit(event, 'Weet je het zeker? LET OP: Alle behandelingen in deze categorie worden ook verwijderd!');" class="hidden">
                                 <?php echo csrf_field(); ?>
                                 <input type="hidden" name="delete_cat" value="<?php echo htmlspecialchars($cat['id']); ?>">
                             </form>
@@ -407,7 +406,7 @@ function render_custom_field_badges(array $items)
                         <?php endif; ?>
 
                         <?php foreach ($products as $p): ?>
-                            <form method="POST" action="productbeheer.php" id="delete-prod-<?php echo htmlspecialchars($p['id']); ?>" onsubmit="return confirm('Weet je zeker dat je deze dienst wilt verwijderen?');" class="hidden">
+                            <form method="POST" action="productbeheer.php" id="delete-prod-<?php echo htmlspecialchars($p['id']); ?>" onsubmit="return confirmSubmit(event, 'Weet je zeker dat je deze dienst wilt verwijderen?');" class="hidden">
                                 <?php echo csrf_field(); ?>
                                 <input type="hidden" name="delete_prod" value="<?php echo htmlspecialchars($p['id']); ?>">
                             </form>

@@ -9,7 +9,12 @@ $error = '';
 // --- 1. VERWERK ALGEMENE TEKSTEN ---
 if (isset($_POST['update_content'])) {
     csrf_verify();
-    $pdo->prepare("UPDATE site_content SET is_visible = 0 WHERE website_id = ?")->execute([$website_id]);
+    // Alleen de rijen resetten die dit formulier ook echt laat zien (zelfde
+    // filter als $algemeen_content hieronder) — anders wordt is_visible ook
+    // gereset voor velden die hier niet in staan (bijv. de afbeeldingen op
+    // tab "Afbeeldingen", of de service-tegel teksten), die daarna nergens
+    // meer aan te zetten zijn en zo permanent onzichtbaar blijven op de site.
+    $pdo->prepare("UPDATE site_content SET is_visible = 0 WHERE website_id = ? AND section_key NOT LIKE 'service_%' AND section_key NOT LIKE '%\\_image%'")->execute([$website_id]);
     if (isset($_POST['content'])) {
         foreach ($_POST['content'] as $page => $items) {
             foreach ($items as $key => $value) {
@@ -25,7 +30,7 @@ if (isset($_POST['update_content'])) {
 // --- 1B. VERWERK ALGEMENE AFBEELDINGEN UPLOADEN ---
 if (isset($_POST['update_images'])) {
     csrf_verify();
-    $image_keys = ['hero_image', 'about_image_1', 'about_image_2'];
+    $image_keys = ['hero_image'];
     try {
         foreach ($image_keys as $key) {
             $new_path = save_uploaded_image($key, $website_id);
@@ -49,7 +54,7 @@ if (isset($_POST['update_images'])) {
 if (isset($_POST['delete_image'])) {
     csrf_verify();
     $key = $_POST['delete_image'];
-    $allowed_keys = ['hero_image', 'about_image_1', 'about_image_2'];
+    $allowed_keys = ['hero_image'];
 
     if (in_array($key, $allowed_keys, true)) {
         $stmt_old = $pdo->prepare("SELECT content_text FROM site_content WHERE website_id = ? AND section_key = ?");
@@ -291,21 +296,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
             </div>
         <?php endif; ?>
         <?php if ($message): ?>
-            <div id="alert-message" class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 shadow-sm rounded-r-lg flex justify-between items-center transition-opacity duration-500">
-                <span class="font-medium"><?php echo htmlspecialchars($message); ?></span>
-                <button onclick="document.getElementById('alert-message').style.display='none'" class="text-green-700 hover:text-green-900 font-bold ml-4 focus:outline-none text-xl leading-none">
-                    &times;
-                </button>
-            </div>
-            <script>
-                setTimeout(function() {
-                    const alert = document.getElementById('alert-message');
-                    if (alert) {
-                        alert.classList.add('opacity-0');
-                        setTimeout(() => alert.style.display = 'none', 500);
-                    }
-                }, 4000);
-            </script>
+            <script>showToast(<?php echo json_encode($message); ?>, 'success');</script>
         <?php endif; ?>
         <div class="border-b border-gray-200 mb-6 bg-white rounded-t-xl shadow-sm overflow-x-auto">
             <nav class="-mb-px flex space-x-6 px-4">
@@ -345,6 +336,10 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                     'nieuws' => ['icon' => '📰', 'title' => 'Nieuws pagina'],
                     'prijsvraag' => ['icon' => '🏆', 'title' => 'Prijsvraag pagina'],
                     'geschiedenis' => ['icon' => '📜', 'title' => 'Geschiedenis pagina'],
+                    'pasfotos' => ['icon' => '📷', 'title' => "Services: Pasfoto's pagina"],
+                    'postnl' => ['icon' => '📦', 'title' => 'Services: PostNL pagina'],
+                    'rdw' => ['icon' => '🚗', 'title' => 'Services: RDW pagina'],
+                    'geldmaat' => ['icon' => '💶', 'title' => 'Services: Geldmaat pagina'],
                     'algemeen' => ['icon' => '⚙️', 'title' => 'Algemeen (overal op de site)'],
                 ];
                 $group_meta = [
@@ -376,7 +371,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                     'portfolio_title' => 'Titel boven fotogalerij'
                 ];
 
-                $page_order = ['home', 'about', 'contact', 'assortiment', 'cadeaukaarten', 'nieuws', 'prijsvraag', 'geschiedenis', 'algemeen'];
+                $page_order = ['home', 'about', 'contact', 'assortiment', 'cadeaukaarten', 'nieuws', 'prijsvraag', 'geschiedenis', 'pasfotos', 'postnl', 'rdw', 'geldmaat', 'algemeen'];
                 $grouped_pages = [];
                 foreach ($algemeen_content as $item) {
                     $page = $item['page'];
@@ -471,12 +466,11 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                     <h2 class="text-2xl font-bold text-gray-800">Afbeeldingen Homepage</h2>
                     <button type="submit" name="update_images" class="bg-pink-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-pink-700 shadow-sm transition-colors hidden md:block">Uploaden & Opslaan</button>
                 </div>
+                <p class="text-sm text-gray-500 mb-6">Assortiment-foto's en merklogo's beheer je bij <a href="assortimentbeheer.php" class="text-pink-600 font-bold hover:underline">Assortiment</a>, en afbeeldingen in de geschiedenistekst voeg je direct in via de tekstverwerker bij <a href="geschiedenisbeheer.php" class="text-pink-600 font-bold hover:underline">Geschiedenis</a>.</p>
                 <div class="grid md:grid-cols-2 gap-6">
                     <?php
                     $image_fields = [
                         'hero_image' => ['title' => 'Hero Afbeelding (Bovenaan)', 'desc' => 'De grote foto die direct te zien is als de site laadt.'],
-                        'about_image_1' => ['title' => 'Over Ons - Grote Afbeelding', 'desc' => 'De eerste/bovenste afbeelding naast het verhaal.'],
-                        'about_image_2' => ['title' => 'Over Ons - Kleine Afbeelding', 'desc' => 'De kleinere, overlappende afbeelding naast het verhaal.'],
                     ];
                     foreach ($image_fields as $field_key => $field):
                         $current_img = get_image($field_key, $placeholder_img);
@@ -489,7 +483,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                         <div class="flex gap-2">
                             <input type="file" name="<?php echo $field_key; ?>" accept="image/jpeg,image/png,image/webp,image/gif" class="w-full text-sm flex-grow">
                             <?php if ($has_img): ?>
-                                <button type="submit" formaction="websitebeheer.php?tab=images" name="delete_image" value="<?php echo $field_key; ?>" onclick="return confirm('Weet je zeker dat je deze afbeelding wilt verwijderen en terug wilt naar de template?');" class="bg-white border border-red-200 text-red-500 hover:bg-red-50 hover:text-red-700 px-3 py-1 rounded shadow-sm text-sm font-bold flex items-center whitespace-nowrap">
+                                <button type="submit" formaction="websitebeheer.php?tab=images" name="delete_image" value="<?php echo $field_key; ?>" onclick="return confirmSubmit(event, 'Weet je zeker dat je deze afbeelding wilt verwijderen en terug wilt naar de template?');" class="bg-white border border-red-200 text-red-500 hover:bg-red-50 hover:text-red-700 px-3 py-1 rounded shadow-sm text-sm font-bold flex items-center whitespace-nowrap">
                                     Verwijder
                                 </button>
                             <?php endif; ?>
@@ -558,7 +552,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                             <?php render_custom_field_badges($portfolio_custom_values[$port['id']] ?? []); ?>
                         </div>
                         <div class="p-4 border-t border-gray-200 bg-white">
-                            <form method="POST" action="websitebeheer.php?tab=portfolio" onsubmit="return confirm('Zeker weten dat je deze foto wilt verwijderen?');">
+                            <form method="POST" action="websitebeheer.php?tab=portfolio" onsubmit="return confirmSubmit(event, 'Zeker weten dat je deze foto wilt verwijderen?');">
                                 <?php echo csrf_field(); ?>
                                 <input type="hidden" name="delete_portfolio" value="<?php echo htmlspecialchars($port['id']); ?>">
                                 <button type="submit" class="text-red-500 hover:text-red-700 text-sm font-bold bg-white px-3 py-2 rounded border border-red-100 block text-center w-full">Verwijderen</button>
@@ -686,7 +680,7 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                         <input type="text" name="team_functie" required value="<?php echo htmlspecialchars($lid['functie']); ?>" placeholder="Functie" class="w-full px-3 py-1.5 border border-gray-200 rounded-md text-sm text-gray-600">
                         <div class="flex justify-between items-center pt-1">
                             <button type="submit" name="update_team_member" value="<?php echo htmlspecialchars($lid['id']); ?>" class="text-xs font-bold text-pink-600 hover:text-pink-700">Opslaan</button>
-                            <button type="submit" name="delete_team_member" value="<?php echo htmlspecialchars($lid['id']); ?>" onclick="return confirm('Dit teamlid verwijderen?');" class="text-red-500 hover:text-red-700 font-bold border p-1 rounded text-xs">Verwijder</button>
+                            <button type="submit" name="delete_team_member" value="<?php echo htmlspecialchars($lid['id']); ?>" onclick="return confirmSubmit(event, 'Dit teamlid verwijderen?');" class="text-red-500 hover:text-red-700 font-bold border p-1 rounded text-xs">Verwijder</button>
                         </div>
                     </form>
                 <?php endforeach; ?>

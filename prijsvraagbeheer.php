@@ -72,7 +72,7 @@ $inzendingen = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
 
         <?php if ($message): ?>
-            <div id="alert-message" class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 shadow-sm rounded-r-lg"><?php echo htmlspecialchars($message); ?></div>
+            <script>showToast(<?php echo json_encode($message); ?>, 'success');</script>
         <?php endif; ?>
 
         <div class="border-b border-gray-200 mb-6 bg-white rounded-t-xl shadow-sm overflow-x-auto">
@@ -138,6 +138,25 @@ $inzendingen = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <p class="text-gray-500 mt-2">Er zijn nog geen inzendingen voor de huidige prijsvraag.</p>
                 </div>
             <?php else: ?>
+                <div class="flex flex-col lg:flex-row gap-3 mb-4">
+                    <input
+                        type="text"
+                        id="searchInput"
+                        oninput="filterInzendingen()"
+                        placeholder="Zoek op naam, e-mail of antwoord..."
+                        class="flex-grow px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-pink-400 focus:border-pink-400 text-sm transition-all"
+                    >
+                    <input
+                        type="text"
+                        id="answerFilter"
+                        oninput="filterInzendingen()"
+                        placeholder="Juiste antwoord (exact)..."
+                        class="lg:w-72 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-pink-400 focus:border-pink-400 text-sm transition-all"
+                    >
+                    <button type="button" onclick="pickWinner()" class="shrink-0 bg-pink-600 text-white font-bold px-6 py-2.5 rounded-lg hover:bg-pink-700 shadow-sm transition-colors">🏆 Winnaar trekken</button>
+                </div>
+                <p id="eligibleCount" class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3"></p>
+
                 <div class="overflow-x-auto border rounded-lg border-gray-200">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -149,9 +168,14 @@ $inzendingen = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actie</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-200 bg-white">
+                        <tbody id="inzendingenBody" class="divide-y divide-gray-200 bg-white">
                             <?php foreach ($inzendingen as $i): ?>
-                                <tr class="hover:bg-gray-50">
+                                <tr class="inzending-row hover:bg-gray-50"
+                                    data-search="<?php echo strtolower(htmlspecialchars($i['voornaam'] . ' ' . $i['achternaam'] . ' ' . $i['email'] . ' ' . $i['antwoord'])); ?>"
+                                    data-antwoord="<?php echo strtolower(trim(htmlspecialchars($i['antwoord']))); ?>"
+                                    data-antwoord-origineel="<?php echo htmlspecialchars($i['antwoord']); ?>"
+                                    data-naam="<?php echo htmlspecialchars($i['voornaam'] . ' ' . $i['achternaam']); ?>"
+                                    data-email="<?php echo htmlspecialchars($i['email']); ?>">
                                     <td class="px-4 py-3 text-sm font-medium text-gray-900"><?php echo htmlspecialchars($i['voornaam'] . ' ' . $i['achternaam']); ?></td>
                                     <td class="px-4 py-3 text-sm text-gray-600">
                                         <div><?php echo htmlspecialchars($i['email']); ?></div>
@@ -160,7 +184,7 @@ $inzendingen = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <td class="px-4 py-3 text-sm text-gray-600"><?php echo htmlspecialchars($i['antwoord']); ?></td>
                                     <td class="px-4 py-3 text-xs text-gray-400 font-mono"><?php echo date('d-m-Y H:i', strtotime($i['created_at'])); ?></td>
                                     <td class="px-4 py-3 text-right">
-                                        <form method="POST" action="prijsvraagbeheer.php?tab=inzendingen" onsubmit="return confirm('Deze inzending definitief verwijderen?');" class="inline">
+                                        <form method="POST" action="prijsvraagbeheer.php?tab=inzendingen" onsubmit="return confirmSubmit(event, 'Deze inzending definitief verwijderen?');" class="inline">
                                             <?php echo csrf_field(); ?>
                                             <input type="hidden" name="delete_inzending" value="<?php echo htmlspecialchars($i['id']); ?>">
                                             <button type="submit" class="text-red-500 hover:text-red-700 font-medium text-sm">Verwijder</button>
@@ -173,6 +197,93 @@ $inzendingen = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             <?php endif; ?>
         </div>
+
+        <div id="winnerModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeWinnerModal()"></div>
+            <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all">
+                <div class="h-2 w-full bg-gradient-to-r from-pink-500 via-yellow-400 to-pink-500"></div>
+                <div class="p-8 text-center">
+                    <div class="text-6xl mb-4">🏆</div>
+                    <p class="text-xs font-bold uppercase tracking-widest text-pink-600 mb-1">De winnaar is</p>
+                    <h3 id="winnerName" class="text-2xl font-extrabold text-gray-800 mb-1"></h3>
+                    <p id="winnerEmail" class="text-sm text-gray-500 mb-1"></p>
+                    <p id="winnerAnswer" class="text-sm text-gray-400 italic mb-4"></p>
+                    <p id="winnerPool" class="text-xs text-gray-400 mb-6"></p>
+                    <button type="button" onclick="closeWinnerModal()" class="w-full bg-pink-600 text-white font-bold py-2.5 rounded-lg hover:bg-pink-700 shadow-sm transition-colors">Sluiten</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function closeWinnerModal() {
+                document.getElementById('winnerModal').classList.add('hidden');
+            }
+
+            function showWinnerModal(row, poolSize) {
+                document.getElementById('winnerName').textContent = row.getAttribute('data-naam');
+                document.getElementById('winnerEmail').textContent = row.getAttribute('data-email');
+                document.getElementById('winnerAnswer').textContent = '"' + row.getAttribute('data-antwoord-origineel') + '"';
+                document.getElementById('winnerPool').textContent = 'Getrokken uit ' + poolSize + ' inzending(en)';
+                document.getElementById('winnerModal').classList.remove('hidden');
+            }
+
+            function filterInzendingen() {
+                const search = document.getElementById('searchInput').value.toLowerCase().trim();
+                const antwoord = document.getElementById('answerFilter').value.toLowerCase().trim();
+                const rows = document.getElementsByClassName('inzending-row');
+                let eligible = 0;
+                for (const row of rows) {
+                    const matchesSearch = row.getAttribute('data-search').includes(search);
+                    const matchesAnswer = antwoord === '' || row.getAttribute('data-antwoord') === antwoord;
+                    const visible = matchesSearch && matchesAnswer;
+                    row.style.display = visible ? '' : 'none';
+                    if (visible) eligible++;
+                }
+                document.getElementById('eligibleCount').textContent = antwoord === '' ? '' : eligible + ' inzending(en) met dit antwoord';
+            }
+
+            function pickWinner() {
+                const antwoord = document.getElementById('answerFilter').value.trim();
+                if (antwoord === '') {
+                    showConfirmModal(
+                        'Er is geen juist antwoord ingevuld, er wordt uit ALLE zichtbare inzendingen getrokken. Doorgaan?',
+                        drawWinner,
+                        { confirmLabel: 'Doorgaan', confirmClass: 'flex-1 py-2.5 bg-pink-600 text-white rounded-lg text-sm font-bold hover:bg-pink-700 transition shadow' }
+                    );
+                    return;
+                }
+                drawWinner();
+            }
+
+            function drawWinner() {
+                const kandidaten = Array.from(document.getElementsByClassName('inzending-row')).filter(row => row.style.display !== 'none');
+                if (kandidaten.length === 0) {
+                    showToast('Geen inzendingen gevonden met dit antwoord.', 'error');
+                    return;
+                }
+
+                kandidaten.forEach(row => row.classList.remove('bg-yellow-100'));
+                let cycles = 0;
+                const maxCycles = 20;
+                const interval = setInterval(() => {
+                    kandidaten.forEach(row => row.classList.remove('bg-yellow-100'));
+                    const randomRow = kandidaten[Math.floor(Math.random() * kandidaten.length)];
+                    randomRow.classList.add('bg-yellow-100');
+                    randomRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    cycles++;
+                    if (cycles > maxCycles) {
+                        clearInterval(interval);
+                        const winnaar = kandidaten[Math.floor(Math.random() * kandidaten.length)];
+                        kandidaten.forEach(row => row.classList.remove('bg-yellow-100'));
+                        winnaar.classList.add('bg-yellow-100');
+                        winnaar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setTimeout(() => {
+                            showWinnerModal(winnaar, kandidaten.length);
+                        }, 300);
+                    }
+                }, 100);
+            }
+        </script>
     </div>
 </body>
 </html>

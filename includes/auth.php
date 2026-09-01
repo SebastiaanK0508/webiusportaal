@@ -68,10 +68,23 @@ function current_user(): ?array
     if (!current_user_id() || !isset($pdo)) {
         return null;
     }
-    $stmt = $pdo->prepare("SELECT id, website_id, role, username, email FROM users WHERE id = ? LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id, website_id, role, username, first_name, last_name, email FROM users WHERE id = ? LIMIT 1");
     $stmt->execute([current_user_id()]);
     $user = $stmt->fetch() ?: null;
     return $user;
+}
+
+/**
+ * Volledige naam van een gebruiker ("Voornaam Achternaam"), of de
+ * gebruikersnaam als die (nog) niet is ingevuld.
+ */
+function user_full_name(?array $user): string
+{
+    if (!$user) {
+        return 'Beheerder';
+    }
+    $name = trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''));
+    return $name !== '' ? $name : ($user['username'] ?? 'Beheerder');
 }
 
 function current_website(): ?array

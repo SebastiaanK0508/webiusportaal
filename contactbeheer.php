@@ -62,35 +62,7 @@ $contact_messages = $contact_messages_stmt->fetchAll();
         </div>
 
         <?php if ($message): ?>
-            <?php
-            if ($msg_type === 'delete') {
-                $bg_class = 'bg-red-50 border-red-500 text-red-800';
-                $icon = '<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>';
-            } else {
-                $bg_class = 'bg-green-50 border-green-500 text-green-800';
-                $icon = '<svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-            }
-            ?>
-            <div id="alert-message" class="<?php echo $bg_class; ?> border-l-4 p-4 mb-6 shadow-sm rounded-r-lg flex justify-between items-center transition-all duration-500 transform translate-y-0 opacity-100">
-                <div class="flex items-center gap-3">
-                    <?php echo $icon; ?>
-                    <span class="font-medium"><?php echo htmlspecialchars($message); ?></span>
-                </div>
-                <button onclick="closeAlert()" class="rounded-lg p-1.5 focus:outline-none transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-            <script>
-                function closeAlert() {
-                    const alert = document.getElementById('alert-message');
-                    if (alert) {
-                        alert.classList.remove('translate-y-0', 'opacity-100');
-                        alert.classList.add('-translate-y-2', 'opacity-0');
-                        setTimeout(() => alert.style.display = 'none', 500);
-                    }
-                }
-                setTimeout(closeAlert, 5000);
-            </script>
+            <script>showToast(<?php echo json_encode($message); ?>, '<?php echo $msg_type === 'delete' ? 'error' : 'success'; ?>');</script>
         <?php endif; ?>
 
         <!-- Navigatie voor de Tabbladen -->

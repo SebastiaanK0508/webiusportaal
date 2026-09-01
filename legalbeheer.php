@@ -67,21 +67,7 @@ $cookies = $cookies_stmt->fetch();
         </div>
 
         <?php if ($message): ?>
-            <div id="alert-message" class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 shadow-sm rounded-r-lg flex justify-between items-center transition-opacity duration-500">
-                <span class="font-medium"><?php echo htmlspecialchars($message); ?></span>
-                <button onclick="document.getElementById('alert-message').style.display='none'" class="text-green-700 hover:text-green-900 font-bold ml-4 focus:outline-none text-xl leading-none">
-                    &times;
-                </button>
-            </div>
-            <script>
-                setTimeout(function() {
-                    const alert = document.getElementById('alert-message');
-                    if (alert) {
-                        alert.classList.add('opacity-0');
-                        setTimeout(() => alert.style.display = 'none', 500);
-                    }
-                }, 4000);
-            </script>
+            <script>showToast(<?php echo json_encode($message); ?>, 'success');</script>
         <?php endif; ?>
         <div class="border-b border-gray-200 mb-6 bg-white rounded-t-xl shadow-sm overflow-x-auto">
             <nav class="-mb-px flex space-x-6 px-4">

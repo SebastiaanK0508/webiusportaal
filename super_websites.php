@@ -127,6 +127,8 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_user') {
     csrf_verify();
     $username = trim($_POST['username'] ?? '');
     $email = trim($_POST['email'] ?? '');
+    $first_name = trim($_POST['first_name'] ?? '');
+    $last_name = trim($_POST['last_name'] ?? '');
     $password = $_POST['password'] ?? '';
     $role = in_array($_POST['role'] ?? '', ['super_admin', 'client'], true) ? $_POST['role'] : 'client';
     $user_website_id = $_POST['user_website_id'] ?? '';
@@ -141,11 +143,13 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_user') {
         if ($exists->fetchColumn()) {
             $error = "Deze gebruikersnaam bestaat al.";
         } else {
-            $stmt = $pdo->prepare("INSERT INTO users (id, website_id, role, username, email, password_hash, is_active) VALUES (UUID(), ?, ?, ?, ?, ?, 1)");
+            $stmt = $pdo->prepare("INSERT INTO users (id, website_id, role, username, first_name, last_name, email, password_hash, is_active) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, 1)");
             $stmt->execute([
                 $role === 'client' ? $user_website_id : null,
                 $role,
                 $username,
+                $first_name ?: null,
+                $last_name ?: null,
                 $email,
                 password_hash($password, PASSWORD_DEFAULT),
             ]);
@@ -160,6 +164,8 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_user') {
     $id = $_POST['user_id'] ?? '';
     $username = trim($_POST['username'] ?? '');
     $email = trim($_POST['email'] ?? '');
+    $first_name = trim($_POST['first_name'] ?? '');
+    $last_name = trim($_POST['last_name'] ?? '');
     $password = $_POST['password'] ?? '';
     $role = in_array($_POST['role'] ?? '', ['super_admin', 'client'], true) ? $_POST['role'] : 'client';
     $user_website_id = $_POST['user_website_id'] ?? '';
@@ -185,12 +191,12 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_user') {
             $error = "Deze gebruikersnaam is al in gebruik door een andere gebruiker.";
         } else {
             if ($password !== '') {
-                $stmt = $pdo->prepare("UPDATE users SET username = ?, email = ?, role = ?, website_id = ?, password_hash = ? WHERE id = ?");
-                $stmt->execute([$username, $email, $role, $role === 'client' ? $user_website_id : null, password_hash($password, PASSWORD_DEFAULT), $id]);
+                $stmt = $pdo->prepare("UPDATE users SET username = ?, email = ?, first_name = ?, last_name = ?, role = ?, website_id = ?, password_hash = ? WHERE id = ?");
+                $stmt->execute([$username, $email, $first_name ?: null, $last_name ?: null, $role, $role === 'client' ? $user_website_id : null, password_hash($password, PASSWORD_DEFAULT), $id]);
                 forget_all_remember_tokens_for_user($id);
             } else {
-                $stmt = $pdo->prepare("UPDATE users SET username = ?, email = ?, role = ?, website_id = ? WHERE id = ?");
-                $stmt->execute([$username, $email, $role, $role === 'client' ? $user_website_id : null, $id]);
+                $stmt = $pdo->prepare("UPDATE users SET username = ?, email = ?, first_name = ?, last_name = ?, role = ?, website_id = ? WHERE id = ?");
+                $stmt->execute([$username, $email, $first_name ?: null, $last_name ?: null, $role, $role === 'client' ? $user_website_id : null, $id]);
             }
             $message = "Gebruiker '{$username}' is bijgewerkt.";
         }
@@ -258,7 +264,7 @@ $users = $pdo->query("
             <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 shadow-sm rounded-r-lg"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         <?php if ($message): ?>
-            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 shadow-sm rounded-r-lg"><?php echo htmlspecialchars($message); ?></div>
+            <script>showToast(<?php echo json_encode($message); ?>, 'success');</script>
         <?php endif; ?>
 
         <div class="border-b border-gray-200 mb-6 bg-white rounded-t-xl shadow-sm overflow-x-auto">
@@ -442,6 +448,16 @@ $users = $pdo->query("
                     <form method="POST" action="super_websites.php?tab=gebruikers" class="space-y-4">
                         <?php echo csrf_field(); ?>
                         <input type="hidden" name="action" value="create_user">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Voornaam</label>
+                                <input type="text" name="first_name" class="w-full border-gray-300 rounded-md border p-2">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Achternaam</label>
+                                <input type="text" name="last_name" class="w-full border-gray-300 rounded-md border p-2">
+                            </div>
+                        </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Gebruikersnaam</label>
                             <input type="text" name="username" required class="w-full border-gray-300 rounded-md border p-2">
@@ -481,7 +497,7 @@ $users = $pdo->query("
                             <details class="border border-gray-200 rounded-lg">
                                 <summary class="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-3">
                                     <div class="min-w-0">
-                                        <div class="font-medium text-gray-900 truncate"><?php echo htmlspecialchars($u['username']); ?> <?php if ($u['id'] === current_user_id()): ?><span class="text-xs text-gray-400 font-normal">(jij)</span><?php endif; ?></div>
+                                        <div class="font-medium text-gray-900 truncate"><?php echo htmlspecialchars(user_full_name($u)); ?> <span class="text-xs text-gray-400 font-normal">@<?php echo htmlspecialchars($u['username']); ?></span> <?php if ($u['id'] === current_user_id()): ?><span class="text-xs text-gray-400 font-normal">(jij)</span><?php endif; ?></div>
                                         <div class="text-xs text-gray-500 truncate"><?php echo htmlspecialchars($u['email']); ?> &middot; <?php echo $u['role'] === 'super_admin' ? 'Super Admin' : 'Client'; ?><?php if ($u['company_name']): ?> &middot; <?php echo htmlspecialchars($u['company_name']); ?><?php endif; ?></div>
                                     </div>
                                     <span class="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0 <?php echo $u['is_active'] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'; ?>"><?php echo $u['is_active'] ? 'Actief' : 'Inactief'; ?></span>
@@ -491,6 +507,16 @@ $users = $pdo->query("
                                         <?php echo csrf_field(); ?>
                                         <input type="hidden" name="action" value="update_user">
                                         <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($u['id']); ?>">
+                                        <div class="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Voornaam</label>
+                                                <input type="text" name="first_name" value="<?php echo htmlspecialchars($u['first_name'] ?? ''); ?>" class="w-full border-gray-300 rounded-md border p-2">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Achternaam</label>
+                                                <input type="text" name="last_name" value="<?php echo htmlspecialchars($u['last_name'] ?? ''); ?>" class="w-full border-gray-300 rounded-md border p-2">
+                                            </div>
+                                        </div>
                                         <div class="grid md:grid-cols-2 gap-4">
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 mb-1">Gebruikersnaam</label>
@@ -538,7 +564,7 @@ $users = $pdo->query("
                                             <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($u['id']); ?>">
                                             <button type="submit" class="text-xs font-bold px-2 py-1 rounded-full <?php echo $u['is_active'] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'; ?>"><?php echo $u['is_active'] ? 'Actief' : 'Inactief'; ?></button>
                                         </form>
-                                        <form method="POST" action="super_websites.php?tab=gebruikers" class="inline" onsubmit="return confirm('Deze gebruiker definitief verwijderen?');">
+                                        <form method="POST" action="super_websites.php?tab=gebruikers" class="inline" onsubmit="return confirmSubmit(event, 'Deze gebruiker definitief verwijderen?');">
                                             <?php echo csrf_field(); ?>
                                             <input type="hidden" name="action" value="delete_user">
                                             <input type="hidden" name="user_id" value="<?php echo htmlspecialchars($u['id']); ?>">

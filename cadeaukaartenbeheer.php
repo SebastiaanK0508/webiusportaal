@@ -134,17 +134,20 @@ $kaarten = $stmt->fetchAll(PDO::FETCH_ASSOC);
             Volgorde opgeslagen!
         </div>
 
-        <?php if (isset($_GET['msg'])): ?>
-            <div class="mb-8 p-4 rounded-lg font-medium
-                <?php echo (strpos($_GET['msg'], 'deleted') !== false || strpos($_GET['msg'], 'error') !== false || $_GET['msg'] === 'invalid') ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-green-100 text-green-800 border border-green-200'; ?>">
-                <?php
-                    if ($_GET['msg'] === 'added') echo 'Cadeaukaart succesvol toegevoegd!';
-                    if ($_GET['msg'] === 'updated') echo 'Cadeaukaart succesvol bijgewerkt!';
-                    if ($_GET['msg'] === 'deleted') echo 'Cadeaukaart verwijderd!';
-                    if ($_GET['msg'] === 'invalid') echo 'Vul minimaal een naam in.';
-                    if ($_GET['msg'] === 'upload_error') echo 'De afbeelding kon niet worden geupload.';
-                ?>
-            </div>
+        <?php if (isset($_GET['msg'])):
+            $__msg_map = [
+                'added' => 'Cadeaukaart succesvol toegevoegd!',
+                'updated' => 'Cadeaukaart succesvol bijgewerkt!',
+                'deleted' => 'Cadeaukaart verwijderd!',
+                'invalid' => 'Vul minimaal een naam in.',
+                'upload_error' => 'De afbeelding kon niet worden geupload.',
+            ];
+            $__msg_text = $__msg_map[$_GET['msg']] ?? null;
+            $__msg_type = (strpos($_GET['msg'], 'deleted') !== false || strpos($_GET['msg'], 'error') !== false || $_GET['msg'] === 'invalid') ? 'error' : 'success';
+        ?>
+            <?php if ($__msg_text): ?>
+                <script>showToast(<?php echo json_encode($__msg_text); ?>, <?php echo json_encode($__msg_type); ?>);</script>
+            <?php endif; ?>
         <?php endif; ?>
 
         <div class="grid lg:grid-cols-3 gap-8">
@@ -221,7 +224,7 @@ $kaarten = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </table>
                     </div>
                     <?php foreach ($kaarten as $k): ?>
-                        <form method="POST" action="cadeaukaartenbeheer.php" id="delete-kaart-<?php echo htmlspecialchars($k['id']); ?>" onsubmit="return confirm('Weet je zeker dat je deze cadeaukaart wilt verwijderen?');" class="hidden">
+                        <form method="POST" action="cadeaukaartenbeheer.php" id="delete-kaart-<?php echo htmlspecialchars($k['id']); ?>" onsubmit="return confirmSubmit(event, 'Weet je zeker dat je deze cadeaukaart wilt verwijderen?');" class="hidden">
                             <?php echo csrf_field(); ?>
                             <input type="hidden" name="delete_kaart" value="<?php echo htmlspecialchars($k['id']); ?>">
                         </form>

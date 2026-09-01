@@ -107,3 +107,16 @@ volgorde.
     van elke pagina (`meta_title`, tab "Algemene Teksten" op
     `websitebeheer.php`) en de merknaam in de footer-kop (`site_naam`).
     Idempotent — veilig om opnieuw te draaien.
+13. **`012_footer_link_icons_and_service_pages.sql`** — voegt een
+    `icon`-kolom toe aan `footer_links` (elke link toont weer een eigen
+    icoon i.p.v. één generiek pijltje; `footerbeheer.php` kiest het icoon
+    automatisch aan de hand van de gekozen pagina) en maakt de 4 losse
+    services-pagina's (`debandijk/services/pasfotos.php`, `postnl.php`,
+    `rdw.php`, `geldmaat.php`) bewerkbaar via `websitebeheer.php` (titel,
+    `<title>`-tag en introtekst). Idempotent — veilig om opnieuw te draaien.
+14. **`013_user_first_last_name.sql`** — voegt `first_name` en `last_name` toe
+    aan `users` (optioneel, NULL toegestaan). Gebruikt door `profielbeheer.php`
+    en de gebruikerslijst in `super_websites.php` om een volledige naam te
+    tonen i.p.v. alleen de gebruikersnaam; ontbreekt de naam nog, dan valt de
+    UI terug op de gebruikersnaam. Veilig, additief, geen bestaande data
+    wordt aangeraakt.

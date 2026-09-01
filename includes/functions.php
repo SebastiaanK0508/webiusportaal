@@ -22,7 +22,17 @@ function get_image($section_key, $default_url)
     $stmt = $pdo->prepare("SELECT content_text FROM site_content WHERE website_id = ? AND section_key = ? LIMIT 1");
     $stmt->execute([current_website_id(), $section_key]);
     $result = $stmt->fetchColumn();
-    return !empty($result) ? htmlspecialchars($result) : $default_url;
+    if (empty($result)) {
+        return $default_url;
+    }
+    // Een opgeslagen pad kan verwijzen naar een bestand dat niet meer op deze
+    // server staat (bijv. een lokale checkout zonder de uploads van productie,
+    // of een handmatig verwijderd bestand) — val dan terug op de placeholder
+    // i.p.v. een kapotte afbeelding te tonen die alleen de alt-tekst laat zien.
+    if (!preg_match('#^https?://#i', $result) && !is_file($result)) {
+        return $default_url;
+    }
+    return htmlspecialchars($result);
 }
 
 function is_visible($section_key)
@@ -161,6 +171,29 @@ function is_toggled($key)
 // De vijf site-specifieke modules. Wijzig hier de lijst wanneer er ooit een
 // module bijkomt/vervalt — super_websites.php en de migraties lezen deze
 // sleutels niet dynamisch uit, dus die moeten in dat geval mee-updaten.
+// De vaste paginaset van debandijk, gebruikt door footerbeheer.php om bij
+// het aanmaken van een footer-link een pagina te laten kiezen i.p.v. een pad
+// te laten intypen — het pad en het icoon (zelfde iconenset als de
+// hoofdnavigatie, zie ICON_KEY_MAP in debandijk/footer.php) vullen dan
+// automatisch mee. 'custom' is geen echte pagina maar de vluchtoptie voor
+// een link die hier niet in staat (bijv. een pagina-anker of externe URL).
+const FOOTER_LINK_PAGES = [
+    'index.php' => ['label' => 'Home', 'icon' => 'home'],
+    'index.php#openingstijden' => ['label' => 'Openingstijden (op homepage)', 'icon' => 'clock'],
+    '#nieuws' => ['label' => 'Nieuws-sectie (op homepage)', 'icon' => 'newspaper'],
+    'nieuws.php' => ['label' => 'Nieuws pagina', 'icon' => 'newspaper'],
+    'assortiment.php' => ['label' => 'Assortiment', 'icon' => 'cart'],
+    'cadeaukaarten.php' => ['label' => 'Cadeaukaarten', 'icon' => 'gift'],
+    'contact.php' => ['label' => 'Contact', 'icon' => 'chat'],
+    'about.php' => ['label' => 'Over Ons', 'icon' => 'people'],
+    'geschiedenis.php' => ['label' => 'Geschiedenis', 'icon' => 'book'],
+    'prijsvraag.php' => ['label' => 'Prijsvraag', 'icon' => 'trophy'],
+    'services/pasfotos.php' => ['label' => "Services: Pasfoto's", 'icon' => 'camera'],
+    'services/postnl.php' => ['label' => 'Services: PostNL', 'icon' => 'package'],
+    'services/rdw.php' => ['label' => 'Services: RDW', 'icon' => 'check-circle'],
+    'services/geldmaat.php' => ['label' => 'Services: Geldmaat', 'icon' => 'cash'],
+];
+
 const AVAILABLE_MODULES = [
     'assortiment'   => 'Assortiment',
     'cadeaukaarten' => 'Cadeaukaarten',

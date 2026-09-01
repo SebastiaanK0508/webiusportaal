@@ -106,17 +106,20 @@ $artikelen = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </a>
         </div>
 
-        <?php if (isset($_GET['msg'])): ?>
-            <div class="mb-8 p-4 rounded-lg font-medium
-                <?php echo (strpos($_GET['msg'], 'deleted') !== false || strpos($_GET['msg'], 'invalid') !== false || strpos($_GET['msg'], 'error') !== false) ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-green-100 text-green-800 border border-green-200'; ?>">
-                <?php
-                    if ($_GET['msg'] === 'added') echo 'Artikel succesvol geplaatst!';
-                    if ($_GET['msg'] === 'deleted') echo 'Artikel verwijderd!';
-                    if ($_GET['msg'] === 'status_updated') echo 'Status bijgewerkt!';
-                    if ($_GET['msg'] === 'invalid') echo 'Vul een titel en inhoud in.';
-                    if ($_GET['msg'] === 'upload_error') echo 'Eén van de afbeeldingen kon niet worden geupload.';
-                ?>
-            </div>
+        <?php if (isset($_GET['msg'])):
+            $__msg_map = [
+                'added' => 'Artikel succesvol geplaatst!',
+                'deleted' => 'Artikel verwijderd!',
+                'status_updated' => 'Status bijgewerkt!',
+                'invalid' => 'Vul een titel en inhoud in.',
+                'upload_error' => 'Eén van de afbeeldingen kon niet worden geupload.',
+            ];
+            $__msg_text = $__msg_map[$_GET['msg']] ?? null;
+            $__msg_type = (strpos($_GET['msg'], 'deleted') !== false || strpos($_GET['msg'], 'invalid') !== false || strpos($_GET['msg'], 'error') !== false) ? 'error' : 'success';
+        ?>
+            <?php if ($__msg_text): ?>
+                <script>showToast(<?php echo json_encode($__msg_text); ?>, <?php echo json_encode($__msg_type); ?>);</script>
+            <?php endif; ?>
         <?php endif; ?>
 
         <div class="grid lg:grid-cols-3 gap-8">
@@ -178,7 +181,7 @@ $artikelen = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <?php endforeach; ?>
                     </div>
                     <?php foreach ($artikelen as $a): ?>
-                        <form method="POST" action="nieuwsbeheer.php" id="delete-artikel-<?php echo htmlspecialchars($a['id']); ?>" onsubmit="return confirm('Weet je zeker dat je dit artikel wilt verwijderen?');" class="hidden">
+                        <form method="POST" action="nieuwsbeheer.php" id="delete-artikel-<?php echo htmlspecialchars($a['id']); ?>" onsubmit="return confirmSubmit(event, 'Weet je zeker dat je dit artikel wilt verwijderen?');" class="hidden">
                             <?php echo csrf_field(); ?>
                             <input type="hidden" name="delete_artikel" value="<?php echo htmlspecialchars($a['id']); ?>">
                         </form>

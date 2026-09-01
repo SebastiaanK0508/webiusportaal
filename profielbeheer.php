@@ -20,6 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         csrf_verify();
         $new_username = trim($_POST['username'] ?? '');
         $new_email = trim($_POST['email'] ?? '');
+        $new_first_name = trim($_POST['first_name'] ?? '');
+        $new_last_name = trim($_POST['last_name'] ?? '');
 
         if (empty($new_username)) {
             $error = "Gebruikersnaam mag niet leeg zijn.";
@@ -30,12 +32,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($check_stmt->rowCount() > 0) {
                 $error = "Deze gebruikersnaam of dit e-mailadres is al in gebruik.";
             } else {
-                $update_stmt = $pdo->prepare("UPDATE users SET username = ?, email = ? WHERE id = ?");
-                if ($update_stmt->execute([$new_username, $new_email, current_user_id()])) {
+                $update_stmt = $pdo->prepare("UPDATE users SET username = ?, email = ?, first_name = ?, last_name = ? WHERE id = ?");
+                if ($update_stmt->execute([$new_username, $new_email, $new_first_name ?: null, $new_last_name ?: null, current_user_id()])) {
                     $message = "Je profielgegevens zijn succesvol bijgewerkt!";
                     $msg_type = 'success';
                     $profile_user['username'] = $new_username;
                     $profile_user['email'] = $new_email;
+                    $profile_user['first_name'] = $new_first_name;
+                    $profile_user['last_name'] = $new_last_name;
                 } else {
                     $error = "Er ging iets mis bij het opslaan.";
                 }
@@ -72,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $role_label = $profile_user['role'] === 'super_admin' ? 'Super Admin' : 'Beheerder';
+$profile_full_name = user_full_name($profile_user);
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -88,27 +93,11 @@ $role_label = $profile_user['role'] === 'super_admin' ? 'Super Admin' : 'Beheerd
         </div>
 
         <?php if ($message): ?>
-            <div id="alert-message" class="bg-green-50 border-l-4 border-green-500 text-green-800 p-4 mb-6 shadow-sm rounded-r-lg flex justify-between items-center transition-all duration-500 transform translate-y-0 opacity-100">
-                <div class="flex items-center gap-3">
-                    <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span class="font-medium"><?php echo htmlspecialchars($message); ?></span>
-                </div>
-                <button onclick="closeAlert()" class="text-green-500 hover:text-green-800 hover:bg-green-100 rounded-lg p-1.5 focus:outline-none transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
+            <script>showToast(<?php echo json_encode($message); ?>, 'success');</script>
         <?php endif; ?>
 
         <?php if ($error): ?>
-            <div id="error-message" class="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 mb-6 shadow-sm rounded-r-lg flex justify-between items-center transition-all duration-500 transform translate-y-0 opacity-100">
-                <div class="flex items-center gap-3">
-                    <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span class="font-medium"><?php echo htmlspecialchars($error); ?></span>
-                </div>
-                <button onclick="document.getElementById('error-message').style.display='none'" class="text-red-500 hover:text-red-800 hover:bg-red-100 rounded-lg p-1.5 focus:outline-none transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
+            <script>showToast(<?php echo json_encode($error); ?>, 'error');</script>
         <?php endif; ?>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -119,11 +108,12 @@ $role_label = $profile_user['role'] === 'super_admin' ? 'Super Admin' : 'Beheerd
                     <div class="px-6 pb-6 relative">
                         <div class="flex justify-center -mt-12 mb-4">
                             <div class="w-24 h-24 bg-white p-1 rounded-full shadow-lg">
-                                <img class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=<?php echo urlencode($profile_user['username'] ?? 'Beheerder'); ?>&background=fce7f3&color=db2777&size=128" alt="Profiel Avatar">
+                                <img class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=<?php echo urlencode($profile_full_name); ?>&background=fce7f3&color=db2777&size=128" alt="Profiel Avatar">
                             </div>
                         </div>
                         <div class="text-center mb-6">
-                            <h2 class="text-xl font-bold text-gray-900"><?php echo htmlspecialchars($profile_user['username'] ?? 'Onbekend'); ?></h2>
+                            <h2 class="text-xl font-bold text-gray-900"><?php echo htmlspecialchars($profile_full_name); ?></h2>
+                            <p class="text-gray-400 text-xs font-medium">@<?php echo htmlspecialchars($profile_user['username'] ?? ''); ?></p>
                             <p class="text-gray-500 text-sm font-medium"><?php echo htmlspecialchars($profile_user['email'] ?? 'Geen e-mailadres ingesteld'); ?></p>
                             <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-50 text-pink-700 text-xs font-bold uppercase tracking-wide mt-3 border border-pink-100">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
@@ -157,6 +147,17 @@ $role_label = $profile_user['role'] === 'super_admin' ? 'Super Admin' : 'Beheerd
                     <div class="p-6">
                         <form action="profielbeheer.php" method="POST" class="space-y-5">
                             <?php echo csrf_field(); ?>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label for="first_name" class="block text-sm font-bold text-gray-700 mb-1.5">Voornaam</label>
+                                    <input type="text" id="first_name" name="first_name" value="<?php echo htmlspecialchars($profile_user['first_name'] ?? ''); ?>" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-all text-sm font-medium">
+                                </div>
+                                <div>
+                                    <label for="last_name" class="block text-sm font-bold text-gray-700 mb-1.5">Achternaam</label>
+                                    <input type="text" id="last_name" name="last_name" value="<?php echo htmlspecialchars($profile_user['last_name'] ?? ''); ?>" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-all text-sm font-medium">
+                                </div>
+                            </div>
+
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div>
                                     <label for="username" class="block text-sm font-bold text-gray-700 mb-1.5">Gebruikersnaam</label>
@@ -237,18 +238,5 @@ $role_label = $profile_user['role'] === 'super_admin' ? 'Super Admin' : 'Beheerd
         </div>
     </div>
 
-    <script>
-        function closeAlert() {
-            const alert = document.getElementById('alert-message');
-            if (alert) {
-                alert.classList.remove('translate-y-0', 'opacity-100');
-                alert.classList.add('-translate-y-2', 'opacity-0');
-                setTimeout(() => alert.style.display = 'none', 500);
-            }
-        }
-        if(document.getElementById('alert-message')) {
-            setTimeout(closeAlert, 5000);
-        }
-    </script>
 </body>
 </html>

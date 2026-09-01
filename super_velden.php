@@ -236,7 +236,7 @@ $website_count = count(all_website_ids($pdo));
             <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 shadow-sm rounded-r-lg"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         <?php if ($message): ?>
-            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 shadow-sm rounded-r-lg"><?php echo htmlspecialchars($message); ?></div>
+            <script>showToast(<?php echo json_encode($message); ?>, 'success');</script>
         <?php endif; ?>
 
         <div class="border-b border-gray-200 mb-6 bg-white rounded-t-xl shadow-sm overflow-x-auto">
@@ -310,7 +310,7 @@ $website_count = count(all_website_ids($pdo));
                                     <td class="px-3 py-2"><?php echo htmlspecialchars($ck['label'] ?: '—'); ?></td>
                                     <td class="px-3 py-2 text-gray-500"><?php echo htmlspecialchars($ck['type']); ?></td>
                                     <td class="px-3 py-2 text-right">
-                                        <form method="POST" action="super_velden.php?tab=teksten" onsubmit="return confirm('Dit veld en de bijbehorende tekst verwijderen?');" class="inline-flex items-center gap-2">
+                                        <form method="POST" action="super_velden.php?tab=teksten" onsubmit="return confirmSubmit(event, 'Dit veld en de bijbehorende tekst verwijderen?');" class="inline-flex items-center gap-2">
                                             <?php echo csrf_field(); ?>
                                             <input type="hidden" name="action" value="delete_content_key">
                                             <input type="hidden" name="section_key" value="<?php echo htmlspecialchars($ck['section_key']); ?>">
@@ -364,7 +364,7 @@ $website_count = count(all_website_ids($pdo));
                                 <tr>
                                     <td class="px-3 py-2 font-mono text-xs text-gray-600"><?php echo htmlspecialchars($fk['sleutel']); ?></td>
                                     <td class="px-3 py-2 text-right">
-                                        <form method="POST" action="super_velden.php?tab=footer" onsubmit="return confirm('Dit footer-veld verwijderen?');" class="inline-flex items-center gap-2">
+                                        <form method="POST" action="super_velden.php?tab=footer" onsubmit="return confirmSubmit(event, 'Dit footer-veld verwijderen?');" class="inline-flex items-center gap-2">
                                             <?php echo csrf_field(); ?>
                                             <input type="hidden" name="action" value="delete_footer_key">
                                             <input type="hidden" name="sleutel" value="<?php echo htmlspecialchars($fk['sleutel']); ?>">
@@ -417,7 +417,7 @@ $website_count = count(all_website_ids($pdo));
                                 <tr>
                                     <td class="px-3 py-2 font-mono text-xs text-gray-600"><?php echo htmlspecialchars($sk['setting_key']); ?></td>
                                     <td class="px-3 py-2 text-right">
-                                        <form method="POST" action="super_velden.php?tab=instellingen" onsubmit="return confirm('Deze instelling verwijderen?');" class="inline-flex items-center gap-2">
+                                        <form method="POST" action="super_velden.php?tab=instellingen" onsubmit="return confirmSubmit(event, 'Deze instelling verwijderen?');" class="inline-flex items-center gap-2">
                                             <?php echo csrf_field(); ?>
                                             <input type="hidden" name="action" value="delete_setting_key">
                                             <input type="hidden" name="setting_key" value="<?php echo htmlspecialchars($sk['setting_key']); ?>">
@@ -502,7 +502,7 @@ $website_count = count(all_website_ids($pdo));
                                     <td class="px-3 py-2"><?php echo htmlspecialchars($cf['label']); ?></td>
                                     <td class="px-3 py-2 text-gray-500"><?php echo htmlspecialchars(CUSTOM_FIELD_TYPES[$cf['field_type']] ?? $cf['field_type']); ?></td>
                                     <td class="px-3 py-2 text-right">
-                                        <form method="POST" action="super_velden.php?tab=extra&entity=<?php echo $entity_type; ?>" onsubmit="return confirm('Dit extra veld en alle ingevulde waarden verwijderen?');" class="inline-flex items-center gap-2">
+                                        <form method="POST" action="super_velden.php?tab=extra&entity=<?php echo $entity_type; ?>" onsubmit="return confirmSubmit(event, 'Dit extra veld en alle ingevulde waarden verwijderen?');" class="inline-flex items-center gap-2">
                                             <?php echo csrf_field(); ?>
                                             <input type="hidden" name="action" value="delete_custom_field">
                                             <input type="hidden" name="field_id" value="<?php echo htmlspecialchars($cf['id']); ?>">
