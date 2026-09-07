@@ -60,8 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="bg-gray-50 font-sans flex items-center justify-center min-h-screen selection:bg-pink-200 selection:text-pink-900 relative overflow-hidden">
     <div class="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 relative z-10 border-t-4 border-t-pink-600">
         <div class="text-center mb-8">
-            <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-pink-200">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z"></path></svg>
+            <div class="w-16 h-16 rounded-full overflow-hidden mx-auto mb-4 shadow-sm border border-pink-200">
+                <img src="assets/img/webius_icon.png" alt="Webius" class="w-full h-full object-cover">
             </div>
             <h2 class="text-3xl font-bold text-gray-800 tracking-tight">Webius Portaal</h2>
             <p class="text-sm text-gray-500 mt-2 font-medium uppercase tracking-widest">Beheeromgeving</p>

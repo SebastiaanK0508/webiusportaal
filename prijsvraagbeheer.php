@@ -48,6 +48,21 @@ if (isset($_POST['delete_inzending'])) {
     $active_tab = 'inzendingen';
 }
 
+// --- GESELECTEERDE INZENDINGEN VERWIJDEREN ---
+if (isset($_POST['delete_selected'])) {
+    csrf_verify();
+    $ids = array_filter($_POST['delete_inzendingen'] ?? [], 'ctype_digit');
+    if (!empty($ids)) {
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $pdo->prepare("DELETE FROM prijsvraag_inzendingen WHERE id IN ($placeholders) AND website_id = ?");
+        $stmt->execute(array_merge(array_values($ids), [$website_id]));
+        $message = count($ids) . " inzending(en) verwijderd.";
+    } else {
+        $message = "Geen inzendingen geselecteerd.";
+    }
+    $active_tab = 'inzendingen';
+}
+
 $stmt = $pdo->prepare("SELECT * FROM prijsvraag_instellingen WHERE website_id = ?");
 $stmt->execute([$website_id]);
 $instellingen = $stmt->fetch();
@@ -155,46 +170,61 @@ $inzendingen = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     >
                     <button type="button" onclick="pickWinner()" class="shrink-0 bg-pink-600 text-white font-bold px-6 py-2.5 rounded-lg hover:bg-pink-700 shadow-sm transition-colors">🏆 Winnaar trekken</button>
                 </div>
-                <p id="eligibleCount" class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3"></p>
-
-                <div class="overflow-x-auto border rounded-lg border-gray-200">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Naam</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Contact</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Antwoord</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Datum</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actie</th>
-                            </tr>
-                        </thead>
-                        <tbody id="inzendingenBody" class="divide-y divide-gray-200 bg-white">
-                            <?php foreach ($inzendingen as $i): ?>
-                                <tr class="inzending-row hover:bg-gray-50"
-                                    data-search="<?php echo strtolower(htmlspecialchars($i['voornaam'] . ' ' . $i['achternaam'] . ' ' . $i['email'] . ' ' . $i['antwoord'])); ?>"
-                                    data-antwoord="<?php echo strtolower(trim(htmlspecialchars($i['antwoord']))); ?>"
-                                    data-antwoord-origineel="<?php echo htmlspecialchars($i['antwoord']); ?>"
-                                    data-naam="<?php echo htmlspecialchars($i['voornaam'] . ' ' . $i['achternaam']); ?>"
-                                    data-email="<?php echo htmlspecialchars($i['email']); ?>">
-                                    <td class="px-4 py-3 text-sm font-medium text-gray-900"><?php echo htmlspecialchars($i['voornaam'] . ' ' . $i['achternaam']); ?></td>
-                                    <td class="px-4 py-3 text-sm text-gray-600">
-                                        <div><?php echo htmlspecialchars($i['email']); ?></div>
-                                        <?php if (!empty($i['telefoon'])): ?><div class="text-xs text-gray-400"><?php echo htmlspecialchars($i['telefoon']); ?></div><?php endif; ?>
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-gray-600"><?php echo htmlspecialchars($i['antwoord']); ?></td>
-                                    <td class="px-4 py-3 text-xs text-gray-400 font-mono"><?php echo date('d-m-Y H:i', strtotime($i['created_at'])); ?></td>
-                                    <td class="px-4 py-3 text-right">
-                                        <form method="POST" action="prijsvraagbeheer.php?tab=inzendingen" onsubmit="return confirmSubmit(event, 'Deze inzending definitief verwijderen?');" class="inline">
-                                            <?php echo csrf_field(); ?>
-                                            <input type="hidden" name="delete_inzending" value="<?php echo htmlspecialchars($i['id']); ?>">
-                                            <button type="submit" class="text-red-500 hover:text-red-700 font-medium text-sm">Verwijder</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                <div class="flex items-center justify-between mb-3">
+                    <p id="eligibleCount" class="text-xs font-semibold text-gray-400 uppercase tracking-wide"></p>
+                    <button type="button" id="bulkDeleteBtn" onclick="bulkDeleteInzendingen()" disabled class="shrink-0 bg-red-100 text-red-400 font-bold px-4 py-2 rounded-lg text-sm transition-colors disabled:cursor-not-allowed enabled:bg-red-600 enabled:text-white enabled:hover:bg-red-700 shadow-sm">
+                        🗑️ Verwijder geselecteerd (<span id="selectedCount">0</span>)
+                    </button>
                 </div>
+
+                <form id="bulkDeleteForm" method="POST" action="prijsvraagbeheer.php?tab=inzendingen">
+                    <?php echo csrf_field(); ?>
+                    <input type="hidden" name="delete_selected" value="1">
+                    <div class="overflow-x-auto border rounded-lg border-gray-200">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left w-10">
+                                        <input type="checkbox" id="selectAllInzendingen" onchange="toggleSelectAllInzendingen(this)" class="rounded border-gray-300 text-pink-600 focus:ring-pink-500">
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Naam</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Contact</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Antwoord</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Datum</th>
+                                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Actie</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inzendingenBody" class="divide-y divide-gray-200 bg-white">
+                                <?php foreach ($inzendingen as $i): ?>
+                                    <tr class="inzending-row hover:bg-gray-50"
+                                        data-search="<?php echo strtolower(htmlspecialchars($i['voornaam'] . ' ' . $i['achternaam'] . ' ' . $i['email'] . ' ' . $i['antwoord'])); ?>"
+                                        data-antwoord="<?php echo strtolower(trim(htmlspecialchars($i['antwoord']))); ?>"
+                                        data-antwoord-origineel="<?php echo htmlspecialchars($i['antwoord']); ?>"
+                                        data-naam="<?php echo htmlspecialchars($i['voornaam'] . ' ' . $i['achternaam']); ?>"
+                                        data-email="<?php echo htmlspecialchars($i['email']); ?>">
+                                        <td class="px-4 py-3">
+                                            <input type="checkbox" name="delete_inzendingen[]" value="<?php echo htmlspecialchars($i['id']); ?>" class="inzending-checkbox rounded border-gray-300 text-pink-600 focus:ring-pink-500" onchange="updateBulkDeleteState()">
+                                        </td>
+                                        <td class="px-4 py-3 text-sm font-medium text-gray-900"><?php echo htmlspecialchars($i['voornaam'] . ' ' . $i['achternaam']); ?></td>
+                                        <td class="px-4 py-3 text-sm text-gray-600">
+                                            <div><?php echo htmlspecialchars($i['email']); ?></div>
+                                            <?php if (!empty($i['telefoon'])): ?><div class="text-xs text-gray-400"><?php echo htmlspecialchars($i['telefoon']); ?></div><?php endif; ?>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-600"><?php echo htmlspecialchars($i['antwoord']); ?></td>
+                                        <td class="px-4 py-3 text-xs text-gray-400 font-mono"><?php echo date('d-m-Y H:i', strtotime($i['created_at'])); ?></td>
+                                        <td class="px-4 py-3 text-right">
+                                            <form method="POST" action="prijsvraagbeheer.php?tab=inzendingen" onsubmit="return confirmSubmit(event, 'Deze inzending definitief verwijderen?');" class="inline">
+                                                <?php echo csrf_field(); ?>
+                                                <input type="hidden" name="delete_inzending" value="<?php echo htmlspecialchars($i['id']); ?>">
+                                                <button type="submit" class="text-red-500 hover:text-red-700 font-medium text-sm">Verwijder</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
             <?php endif; ?>
         </div>
 
@@ -238,8 +268,47 @@ $inzendingen = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     const visible = matchesSearch && matchesAnswer;
                     row.style.display = visible ? '' : 'none';
                     if (visible) eligible++;
+                    if (!visible) {
+                        const checkbox = row.querySelector('.inzending-checkbox');
+                        if (checkbox) checkbox.checked = false;
+                    }
                 }
                 document.getElementById('eligibleCount').textContent = antwoord === '' ? '' : eligible + ' inzending(en) met dit antwoord';
+                updateBulkDeleteState();
+            }
+
+            function toggleSelectAllInzendingen(source) {
+                const rows = document.getElementsByClassName('inzending-row');
+                for (const row of rows) {
+                    if (row.style.display === 'none') continue;
+                    const checkbox = row.querySelector('.inzending-checkbox');
+                    if (checkbox) checkbox.checked = source.checked;
+                }
+                updateBulkDeleteState();
+            }
+
+            function updateBulkDeleteState() {
+                const rows = Array.from(document.getElementsByClassName('inzending-row')).filter(row => row.style.display !== 'none');
+                const checkboxes = rows.map(row => row.querySelector('.inzending-checkbox')).filter(Boolean);
+                const checked = checkboxes.filter(cb => cb.checked);
+
+                const selectAll = document.getElementById('selectAllInzendingen');
+                selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+                selectAll.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+
+                const bulkBtn = document.getElementById('bulkDeleteBtn');
+                bulkBtn.disabled = checked.length === 0;
+                document.getElementById('selectedCount').textContent = checked.length;
+            }
+
+            function bulkDeleteInzendingen() {
+                const checked = document.querySelectorAll('.inzending-checkbox:checked');
+                if (checked.length === 0) return;
+                showConfirmModal(
+                    checked.length + ' inzending(en) definitief verwijderen?',
+                    () => document.getElementById('bulkDeleteForm').submit(),
+                    { confirmLabel: 'Verwijderen', confirmClass: 'flex-1 py-2.5 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition shadow' }
+                );
             }
 
             function pickWinner() {

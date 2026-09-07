@@ -74,6 +74,9 @@ if (current_website_id()) {
     <div class="w-full px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
             <div class="flex items-center gap-8">
+                <a href="beheer.php" class="flex items-center flex-shrink-0">
+                    <img src="assets/img/webius_icon.png" alt="Webius" class="h-9 w-9 rounded-lg object-cover">
+                </a>
                 <nav class="hidden md:flex space-x-1 lg:space-x-2 items-center">
                     <a href="beheer.php" class="px-3 py-2 rounded-md text-gray-600 hover:text-pink-600 hover:bg-pink-50 font-medium text-sm transition-all duration-200">Dashboard</a>
 
@@ -210,6 +213,8 @@ if (current_website_id()) {
     <div id="mobile-menu" class="md:hidden absolute w-full bg-white border-b border-gray-200 shadow-xl overflow-y-auto transition-all duration-300 max-h-0 opacity-0 z-40">
         <div class="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
             <div class="flex items-center gap-3">
+                <img src="assets/img/webius_icon.png" alt="Webius" class="h-9 w-9 rounded-lg object-cover flex-shrink-0">
+                <div class="w-px h-8 bg-gray-200"></div>
                 <img class="h-10 w-10 rounded-full object-cover border border-gray-200 bg-white" src="https://ui-avatars.com/api/?name=<?php echo urlencode($admin_username); ?>&background=fce7f3&color=db2777" alt="Admin">
                 <div>
                     <div class="text-sm font-bold text-gray-800"><?php echo htmlspecialchars($admin_username); ?></div>
