@@ -81,6 +81,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_website') {
             $message = "Website '{$company}' is aangemaakt.";
         }
     }
+    flash_redirect('super_websites.php?tab=websites', $message, $error);
 }
 
 // --- WEBSITE BIJWERKEN ---
@@ -120,6 +121,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_website') {
             $message = "Website bijgewerkt.";
         }
     }
+    flash_redirect('super_websites.php?tab=websites', $message, $error);
 }
 
 // --- GEBRUIKER AANMAKEN ---
@@ -156,6 +158,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'create_user') {
             $message = "Gebruiker '{$username}' is aangemaakt.";
         }
     }
+    flash_redirect('super_websites.php?tab=gebruikers', $message, $error);
 }
 
 // --- GEBRUIKER BIJWERKEN ---
@@ -201,7 +204,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_user') {
             $message = "Gebruiker '{$username}' is bijgewerkt.";
         }
     }
-    $active_tab = 'gebruikers';
+    flash_redirect('super_websites.php?tab=gebruikers', $message, $error);
 }
 
 // --- GEBRUIKER ACTIVEREN/DEACTIVEREN ---
@@ -214,6 +217,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'toggle_user') {
         $pdo->prepare("UPDATE users SET is_active = 1 - is_active WHERE id = ?")->execute([$id]);
         $message = "Gebruikersstatus bijgewerkt.";
     }
+    flash_redirect('super_websites.php?tab=gebruikers', $message, $error);
 }
 
 // --- GEBRUIKER VERWIJDEREN ---
@@ -226,6 +230,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_user') {
         $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
         $message = "Gebruiker verwijderd.";
     }
+    flash_redirect('super_websites.php?tab=gebruikers', $message, $error);
 }
 
 $websites = $pdo->query("SELECT * FROM websites ORDER BY company_name ASC")->fetchAll();
@@ -239,6 +244,8 @@ $users = $pdo->query("
     LEFT JOIN websites w ON w.id = u.website_id
     ORDER BY u.username ASC
 ")->fetchAll();
+
+[$message, $error] = get_flash_messages();
 ?>
 <!DOCTYPE html>
 <html lang="nl">

@@ -17,8 +17,10 @@ if (isset($_POST['update_geschiedenis'])) {
     } else {
         $pdo->prepare("INSERT INTO geschiedenis (website_id, title, content) VALUES (?, ?, ?)")->execute([$website_id, $title, $content]);
     }
-    $message = "Geschiedenis-pagina succesvol bijgewerkt!";
+    flash_redirect('geschiedenisbeheer.php', "Geschiedenis-pagina succesvol bijgewerkt!");
 }
+
+$message = get_flash_messages()[0];
 
 $stmt = $pdo->prepare("SELECT * FROM geschiedenis WHERE website_id = ?");
 $stmt->execute([$website_id]);

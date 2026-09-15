@@ -12,7 +12,7 @@ if (isset($_POST['update_socials'])) {
         set_footer_setting($social, trim($_POST[$social] ?? ''));
         set_footer_setting($social . '_actief', isset($_POST[$social . '_actief']) ? '1' : '0');
     }
-    $message = "Social media links succesvol bijgewerkt!";
+    flash_redirect('footerbeheer.php?tab=tab-socials', "Social media links succesvol bijgewerkt!");
 }
 if (isset($_POST['update_contact'])) {
     csrf_verify();
@@ -20,7 +20,7 @@ if (isset($_POST['update_contact'])) {
     foreach ($contacts as $contact) {
         set_footer_setting($contact, trim($_POST[$contact] ?? ''));
     }
-    $message = "Contactgegevens succesvol bijgewerkt!";
+    flash_redirect('footerbeheer.php?tab=tab-contact', "Contactgegevens succesvol bijgewerkt!");
 }
 if (isset($_POST['update_bedrijf'])) {
     csrf_verify();
@@ -28,12 +28,12 @@ if (isset($_POST['update_bedrijf'])) {
     foreach ($bedrijf as $gegeven) {
         set_footer_setting($gegeven, trim($_POST[$gegeven] ?? ''));
     }
-    $message = "Bedrijfsgegevens succesvol bijgewerkt!";
+    flash_redirect('footerbeheer.php?tab=tab-bedrijf', "Bedrijfsgegevens succesvol bijgewerkt!");
 }
 if (isset($_POST['update_info'])) {
     csrf_verify();
     set_footer_setting('footer_text', trim($_POST['footer_text'] ?? ''));
-    $message = "Informatie tekst succesvol bijgewerkt!";
+    flash_redirect('footerbeheer.php?tab=tab-info', "Informatie tekst succesvol bijgewerkt!");
 }
 
 $footer_link_kolommen = ['services' => 'Services', 'navigatie' => 'Navigatie'];
@@ -67,7 +67,7 @@ if (isset($_POST['add_footer_link'])) {
         $stmt->execute([$new_id, $website_id, $kolom, $label, $url, $icon, $new_order]);
         $message = "Link toegevoegd!";
     }
-    $active_tab = 'tab-links';
+    flash_redirect('footerbeheer.php?tab=tab-links', $message);
 }
 if (isset($_POST['update_footer_link'])) {
     csrf_verify();
@@ -78,14 +78,13 @@ if (isset($_POST['update_footer_link'])) {
         $stmt->execute([$label, $url, $icon, $_POST['update_footer_link'], $website_id]);
         $message = "Link bijgewerkt!";
     }
-    $active_tab = 'tab-links';
+    flash_redirect('footerbeheer.php?tab=tab-links', $message);
 }
 if (isset($_POST['delete_footer_link'])) {
     csrf_verify();
     $stmt = $pdo->prepare("DELETE FROM footer_links WHERE id = ? AND website_id = ?");
     $stmt->execute([$_POST['delete_footer_link'], $website_id]);
-    $message = "Link verwijderd!";
-    $active_tab = 'tab-links';
+    flash_redirect('footerbeheer.php?tab=tab-links', "Link verwijderd!");
 }
 
 $footer_links = [];
@@ -99,6 +98,8 @@ $stmt->execute([$website_id]);
 while ($row = $stmt->fetch()) {
     $footer_data[$row['sleutel']] = $row['waarde'];
 }
+
+$message = get_flash_messages()[0];
 ?>
 <!DOCTYPE html>
 <html lang="nl">

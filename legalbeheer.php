@@ -21,9 +21,10 @@ if (isset($_POST['update_legal'])) {
         $stmt->execute([$website_id, $type, $title, $content]);
     }
 
-    $message = "Document succesvol bijgewerkt!";
-    $active_tab = 'tab-' . $type;
+    flash_redirect('legalbeheer.php?tab=tab-' . urlencode($type), "Document succesvol bijgewerkt!");
 }
+
+$message = get_flash_messages()[0];
 
 $voorwaarden_stmt = $pdo->prepare("SELECT * FROM legals WHERE website_id = ? AND type = 'voorwaarden'");
 $voorwaarden_stmt->execute([$website_id]);
@@ -148,6 +149,5 @@ $cookies = $cookies_stmt->fetch();
             </form>
         </div>
     </div>
-
 </body>
 </html>

@@ -36,16 +36,14 @@ if (isset($_POST['update_instellingen'])) {
             ->execute([$website_id, $huidige_vraag, $huidige_prijs, $nieuwe_afbeelding, $is_actief, $toon_antwoorden]);
     }
 
-    $message = "Prijsvraag-instellingen bijgewerkt!";
-    $active_tab = 'instellingen';
+    flash_redirect('prijsvraagbeheer.php?tab=instellingen', "Prijsvraag-instellingen bijgewerkt!");
 }
 
 // --- INZENDING VERWIJDEREN ---
 if (isset($_POST['delete_inzending'])) {
     csrf_verify();
     $pdo->prepare("DELETE FROM prijsvraag_inzendingen WHERE id = ? AND website_id = ?")->execute([$_POST['delete_inzending'], $website_id]);
-    $message = "Inzending verwijderd.";
-    $active_tab = 'inzendingen';
+    flash_redirect('prijsvraagbeheer.php?tab=inzendingen', "Inzending verwijderd.");
 }
 
 // --- GESELECTEERDE INZENDINGEN VERWIJDEREN ---
@@ -60,7 +58,7 @@ if (isset($_POST['delete_selected'])) {
     } else {
         $message = "Geen inzendingen geselecteerd.";
     }
-    $active_tab = 'inzendingen';
+    flash_redirect('prijsvraagbeheer.php?tab=inzendingen', $message);
 }
 
 $stmt = $pdo->prepare("SELECT * FROM prijsvraag_instellingen WHERE website_id = ?");
@@ -70,6 +68,8 @@ $instellingen = $stmt->fetch();
 $stmt = $pdo->prepare("SELECT * FROM prijsvraag_inzendingen WHERE website_id = ? ORDER BY created_at DESC");
 $stmt->execute([$website_id]);
 $inzendingen = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$message = get_flash_messages()[0];
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -306,7 +306,7 @@ $inzendingen = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 if (checked.length === 0) return;
                 showConfirmModal(
                     checked.length + ' inzending(en) definitief verwijderen?',
-                    () => document.getElementById('bulkDeleteForm').submit(),
+                    () => { saveScrollPosition(); document.getElementById('bulkDeleteForm').submit(); },
                     { confirmLabel: 'Verwijderen', confirmClass: 'flex-1 py-2.5 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition shadow' }
                 );
             }

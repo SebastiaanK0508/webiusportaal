@@ -15,8 +15,10 @@ if (isset($_POST['save_app_settings'])) {
     foreach ($toggles as $toggle) {
         set_app_setting($toggle, isset($_POST['toggles'][$toggle]) ? '1' : '0');
     }
-    $message = "E-mailinstellingen zijn succesvol opgeslagen!";
+    flash_redirect('app_instellingen.php', "E-mailinstellingen zijn succesvol opgeslagen!");
 }
+
+$message = get_flash_messages()[0];
 ?>
 <!DOCTYPE html>
 <html lang="nl">

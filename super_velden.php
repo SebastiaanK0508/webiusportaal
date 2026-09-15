@@ -23,6 +23,15 @@ if (!array_key_exists($entity_type, CUSTOM_FIELD_ENTITY_TYPES)) {
 $message = '';
 $error = '';
 
+function super_velden_redirect($tab, $entity = null, $message = '', $error = '')
+{
+    $location = 'super_velden.php?tab=' . urlencode($tab);
+    if ($entity !== null) {
+        $location .= '&entity=' . urlencode($entity);
+    }
+    flash_redirect($location, $message, $error);
+}
+
 // ============================================================
 // SITE_CONTENT KEYS
 // ============================================================
@@ -55,6 +64,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_content_key') {
         }
         $message = "Veld '{$section_key}' toegevoegd aan {$added} website(s).";
     }
+    super_velden_redirect('teksten', null, $message, $error);
 }
 if (isset($_POST['action']) && $_POST['action'] === 'delete_content_key') {
     csrf_verify();
@@ -66,6 +76,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_content_key') {
     $pdo->prepare("DELETE FROM site_content WHERE section_key = ? AND page = ? AND website_id IN ($in)")
         ->execute(array_merge([$section_key, $page], $targets));
     $message = "Veld '{$section_key}' verwijderd.";
+    super_velden_redirect('teksten', null, $message);
 }
 
 // ============================================================
@@ -93,6 +104,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_footer_key') {
         }
         $message = "Footer-veld '{$sleutel}' toegevoegd aan {$added} website(s).";
     }
+    super_velden_redirect('footer', null, $message, $error);
 }
 if (isset($_POST['action']) && $_POST['action'] === 'delete_footer_key') {
     csrf_verify();
@@ -103,6 +115,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_footer_key') {
     $pdo->prepare("DELETE FROM footer WHERE sleutel = ? AND website_id IN ($in)")
         ->execute(array_merge([$sleutel], $targets));
     $message = "Footer-veld '{$sleutel}' verwijderd.";
+    super_velden_redirect('footer', null, $message);
 }
 
 // ============================================================
@@ -130,6 +143,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_setting_key') {
         }
         $message = "Instelling '{$setting_key}' toegevoegd aan {$added} website(s).";
     }
+    super_velden_redirect('instellingen', null, $message, $error);
 }
 if (isset($_POST['action']) && $_POST['action'] === 'delete_setting_key') {
     csrf_verify();
@@ -140,6 +154,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_setting_key') {
     $pdo->prepare("DELETE FROM app_settings WHERE setting_key = ? AND website_id IN ($in)")
         ->execute(array_merge([$setting_key], $targets));
     $message = "Instelling '{$setting_key}' verwijderd.";
+    super_velden_redirect('instellingen', null, $message);
 }
 
 // ============================================================
@@ -171,9 +186,9 @@ if (isset($_POST['action']) && $_POST['action'] === 'add_custom_field') {
             $added++;
         }
         $message = "Extra veld '{$label}' toegevoegd aan {$added} website(s) voor '" . CUSTOM_FIELD_ENTITY_TYPES[$target_entity] . "'.";
-        $entity_type = $target_entity;
-        $active_tab = 'extra';
     }
+    $redirect_entity = array_key_exists($target_entity, CUSTOM_FIELD_ENTITY_TYPES) ? $target_entity : 'product';
+    super_velden_redirect('extra', $redirect_entity, $message, $error);
 }
 if (isset($_POST['action']) && $_POST['action'] === 'delete_custom_field') {
     csrf_verify();
@@ -200,7 +215,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'delete_custom_field') {
         $message = "Extra veld '{$def['field_key']}' verwijderd.";
         $entity_type = $def['entity_type'];
     }
-    $active_tab = 'extra';
+    super_velden_redirect('extra', $entity_type, $message);
 }
 
 $content_keys_stmt = $pdo->prepare("SELECT section_key, page, type, label, group_name FROM site_content WHERE website_id = ? ORDER BY page, section_key");
@@ -217,6 +232,8 @@ $setting_keys = $setting_keys_stmt->fetchAll();
 
 $custom_fields = get_custom_field_definitions($entity_type);
 $website_count = count(all_website_ids($pdo));
+
+[$message, $error] = get_flash_messages();
 ?>
 <!DOCTYPE html>
 <html lang="nl">

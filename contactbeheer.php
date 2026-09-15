@@ -24,16 +24,19 @@ if (isset($_POST['update_contact_content'])) {
             $stmt->execute([$value, $is_visible, $website_id, $key]);
         }
     }
-    $message = "De teksten voor de contactpagina zijn succesvol bijgewerkt!";
-    $msg_type = 'success';
+    flash_redirect('contactbeheer.php?tab=teksten', "De teksten voor de contactpagina zijn succesvol bijgewerkt!");
 }
 if (isset($_POST['delete_message'])) {
     csrf_verify();
     $stmt = $pdo->prepare("DELETE FROM contact_messages WHERE id = ? AND website_id = ?");
     $stmt->execute([$_POST['delete_message'], $website_id]);
-    $message = "Het bericht is definitief verwijderd.";
+    flash_redirect('contactbeheer.php?tab=berichten', '', "Het bericht is definitief verwijderd.");
+}
+
+[$message, $flash_error] = get_flash_messages();
+if ($flash_error !== '') {
+    $message = $flash_error;
     $msg_type = 'delete';
-    $active_tab = 'berichten';
 }
 
 $contact_content_stmt = $pdo->prepare("SELECT * FROM site_content WHERE website_id = ? AND section_key LIKE 'contact\\_%' ORDER BY section_key ASC");

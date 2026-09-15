@@ -5,16 +5,13 @@ $website_id = require_website_context();
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'algemeen';
 $message = '';
 $error = '';
-
-// --- 1. VERWERK ALGEMENE TEKSTEN ---
+function websitebeheer_redirect_after_post($tab, $message = '', $error = '')
+{
+    flash_redirect('websitebeheer.php?tab=' . urlencode($tab), $message, $error);
+}
 if (isset($_POST['update_content'])) {
     csrf_verify();
-    // Alleen de rijen resetten die dit formulier ook echt laat zien (zelfde
-    // filter als $algemeen_content hieronder) — anders wordt is_visible ook
-    // gereset voor velden die hier niet in staan (bijv. de afbeeldingen op
-    // tab "Afbeeldingen", of de service-tegel teksten), die daarna nergens
-    // meer aan te zetten zijn en zo permanent onzichtbaar blijven op de site.
-    $pdo->prepare("UPDATE site_content SET is_visible = 0 WHERE website_id = ? AND section_key NOT LIKE 'service_%' AND section_key NOT LIKE '%\\_image%'")->execute([$website_id]);
+    $pdo->prepare("UPDATE site_content SET is_visible = 0 WHERE website_id = ? AND section_key NOT LIKE 'service_%' AND section_key NOT LIKE '%\\_image%' AND section_key NOT LIKE 'social\\_%'")->execute([$website_id]);
     if (isset($_POST['content'])) {
         foreach ($_POST['content'] as $page => $items) {
             foreach ($items as $key => $value) {
@@ -25,9 +22,8 @@ if (isset($_POST['update_content'])) {
         }
     }
     $message = "Teksten en instellingen zijn succesvol bijgewerkt!";
+    websitebeheer_redirect_after_post('algemeen', $message);
 }
-
-// --- 1B. VERWERK ALGEMENE AFBEELDINGEN UPLOADEN ---
 if (isset($_POST['update_images'])) {
     csrf_verify();
     $image_keys = ['hero_image'];
@@ -48,9 +44,8 @@ if (isset($_POST['update_images'])) {
     } catch (UploadException $e) {
         $error = $e->getMessage();
     }
+    websitebeheer_redirect_after_post('images', $message, $error);
 }
-
-// --- 1C. VERWERK ALGEMENE AFBEELDINGEN VERWIJDEREN ---
 if (isset($_POST['delete_image'])) {
     csrf_verify();
     $key = $_POST['delete_image'];
@@ -66,11 +61,9 @@ if (isset($_POST['delete_image'])) {
         $stmt->execute([$website_id, $key]);
 
         $message = "Afbeelding is verwijderd, de template wordt weer getoond!";
-        $active_tab = 'images';
     }
+    websitebeheer_redirect_after_post('images', $message);
 }
-
-// --- 2. VERWERK HOMEPAGE PRODUCTEN ---
 if (isset($_POST['update_homepage_products'])) {
     csrf_verify();
     try {
@@ -88,9 +81,8 @@ if (isset($_POST['update_homepage_products'])) {
     } catch (PDOException $e) {
         $error = "Fout bij opslaan van de uitgelichte producten.";
     }
+    websitebeheer_redirect_after_post('producten', $message, $error);
 }
-
-// --- 3. VERWERK PORTFOLIO ---
 if (isset($_POST['add_portfolio'])) {
     csrf_verify();
     $title = trim($_POST['port_title'] ?? '');
@@ -109,6 +101,7 @@ if (isset($_POST['add_portfolio'])) {
     } catch (UploadException $e) {
         $error = $e->getMessage();
     }
+    websitebeheer_redirect_after_post('portfolio', $message, $error);
 }
 if (isset($_POST['delete_portfolio'])) {
     csrf_verify();
@@ -123,10 +116,8 @@ if (isset($_POST['delete_portfolio'])) {
         delete_custom_field_values_for_entity($id);
         $message = "Foto is verwijderd!";
     }
-    $active_tab = 'portfolio';
+    websitebeheer_redirect_after_post('portfolio', $message);
 }
-
-// --- 4. VERWERK USP's ---
 if (isset($_POST['add_usp'])) {
     csrf_verify();
     $icon = trim($_POST['usp_icon'] ?? '');
@@ -137,6 +128,7 @@ if (isset($_POST['add_usp'])) {
     $stmt->execute([$new_usp_id, $website_id, $icon, $title, $desc]);
     save_custom_field_values('usp', $new_usp_id, $_POST['custom_fields'] ?? []);
     $message = "USP toegevoegd!";
+    websitebeheer_redirect_after_post('usps', $message);
 }
 if (isset($_POST['delete_usp'])) {
     csrf_verify();
@@ -144,10 +136,8 @@ if (isset($_POST['delete_usp'])) {
     $stmt->execute([$_POST['delete_usp'], $website_id]);
     delete_custom_field_values_for_entity($_POST['delete_usp']);
     $message = "USP verwijderd!";
-    $active_tab = 'usps';
+    websitebeheer_redirect_after_post('usps', $message);
 }
-
-// --- 5. VERWERK REVIEWS ---
 if (isset($_POST['add_review'])) {
     csrf_verify();
     $name = trim($_POST['review_name'] ?? '');
@@ -158,6 +148,7 @@ if (isset($_POST['add_review'])) {
     $stmt->execute([$new_review_id, $website_id, $name, $text, $stars]);
     save_custom_field_values('review', $new_review_id, $_POST['custom_fields'] ?? []);
     $message = "Review toegevoegd!";
+    websitebeheer_redirect_after_post('reviews', $message);
 }
 if (isset($_POST['delete_review'])) {
     csrf_verify();
@@ -165,10 +156,8 @@ if (isset($_POST['delete_review'])) {
     $stmt->execute([$_POST['delete_review'], $website_id]);
     delete_custom_field_values_for_entity($_POST['delete_review']);
     $message = "Review verwijderd!";
-    $active_tab = 'reviews';
+    websitebeheer_redirect_after_post('reviews', $message);
 }
-
-// --- 6. VERWERK FAQ ---
 if (isset($_POST['add_faq'])) {
     csrf_verify();
     $q = trim($_POST['faq_q'] ?? '');
@@ -178,6 +167,7 @@ if (isset($_POST['add_faq'])) {
     $stmt->execute([$new_faq_id, $website_id, $q, $a]);
     save_custom_field_values('faq', $new_faq_id, $_POST['custom_fields'] ?? []);
     $message = "FAQ toegevoegd!";
+    websitebeheer_redirect_after_post('faq', $message);
 }
 if (isset($_POST['delete_faq'])) {
     csrf_verify();
@@ -185,7 +175,7 @@ if (isset($_POST['delete_faq'])) {
     $stmt->execute([$_POST['delete_faq'], $website_id]);
     delete_custom_field_values_for_entity($_POST['delete_faq']);
     $message = "FAQ verwijderd!";
-    $active_tab = 'faq';
+    websitebeheer_redirect_after_post('faq', $message);
 }
 
 // --- 7. VERWERK TEAM ---
@@ -203,7 +193,7 @@ if (isset($_POST['add_team_member'])) {
         $stmt->execute([$new_team_id, $website_id, $naam, $functie, $new_order]);
         $message = "Teamlid toegevoegd!";
     }
-    $active_tab = 'team';
+    websitebeheer_redirect_after_post('team', $message);
 }
 if (isset($_POST['update_team_member'])) {
     csrf_verify();
@@ -214,17 +204,17 @@ if (isset($_POST['update_team_member'])) {
         $stmt->execute([$naam, $functie, $_POST['update_team_member'], $website_id]);
         $message = "Teamlid bijgewerkt!";
     }
-    $active_tab = 'team';
+    websitebeheer_redirect_after_post('team', $message);
 }
 if (isset($_POST['delete_team_member'])) {
     csrf_verify();
     $stmt = $pdo->prepare("DELETE FROM team_members WHERE id = ? AND website_id = ?");
     $stmt->execute([$_POST['delete_team_member'], $website_id]);
     $message = "Teamlid verwijderd!";
-    $active_tab = 'team';
+    websitebeheer_redirect_after_post('team', $message);
 }
 
-$algemeen_content = $pdo->prepare("SELECT * FROM site_content WHERE website_id = ? AND section_key NOT LIKE 'service_%' AND section_key NOT LIKE '%\\_image%' ORDER BY page, section_key");
+$algemeen_content = $pdo->prepare("SELECT * FROM site_content WHERE website_id = ? AND section_key NOT LIKE 'service_%' AND section_key NOT LIKE '%\\_image%' AND section_key NOT LIKE 'social\\_%' ORDER BY page, section_key");
 $algemeen_content->execute([$website_id]);
 $algemeen_content = $algemeen_content->fetchAll();
 
@@ -276,6 +266,8 @@ try {
 }
 
 $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeelding';
+
+[$message, $error] = get_flash_messages();
 ?>
 <!DOCTYPE html>
 <html lang="nl">
@@ -350,7 +342,6 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                     'portfolio' => ['icon' => '📸', 'title' => 'Portfolio Sectie', 'desc' => 'Instellingen voor de fotogalerij.'],
                     'info' => ['icon' => 'ℹ️', 'title' => 'Contactgegevens', 'desc' => 'Adres, telefoon en e-mail op de contactpagina — deze gegevens komen ook terug in de footer en op de geschiedenispagina.'],
                     'contact' => ['icon' => '☎️', 'title' => 'Contactgegevens', 'desc' => 'Gegevens die elders op de site worden getoond (bijv. footer).'],
-                    'social' => ['icon' => '📱', 'title' => 'Social Media', 'desc' => 'Links naar social-mediakanalen.'],
                     'footer' => ['icon' => '📄', 'title' => 'Footer', 'desc' => 'Tekst onderaan de website.'],
                     'bedrijfsgegevens' => ['icon' => '🏢', 'title' => 'Bedrijfsgegevens', 'desc' => 'KVK, BTW en andere juridische gegevens.'],
                     'wettelijk' => ['icon' => '⚖️', 'title' => 'Wettelijke tekst', 'desc' => 'Verplichte tekst, bijv. rondom leeftijdsgrenzen.'],
@@ -393,8 +384,6 @@ $placeholder_img = 'https://placehold.co/600x400/fce7f3/db2777?text=Geen+Afbeeld
                     }
                     $grouped_pages[$page]['groups'][$group_key]['items'][] = $item;
                 }
-                // Bekende pagina's eerst en in een vaste, voorspelbare volgorde; onbekende
-                // pagina's (indien ooit toegevoegd via super_velden.php) komen er achteraan.
                 uksort($grouped_pages, function ($a, $b) use ($page_order) {
                     $pa = array_search($a, $page_order);
                     $pb = array_search($b, $page_order);

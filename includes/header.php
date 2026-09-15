@@ -385,9 +385,34 @@ if (current_website_id()) {
     function confirmSubmit(event, message) {
         event.preventDefault();
         const form = event.target.closest('form');
-        showConfirmModal(message, () => form.submit());
+        showConfirmModal(message, () => { saveScrollPosition(); form.submit(); });
         return false;
     }
+
+    // ---- Scrollpositie onthouden bij formulier-opslaan ----
+    // Na het opslaan van een formulier redirect de server terug naar dezelfde
+    // pagina/tab; zonder dit begint de pagina daarna weer bovenaan, wat
+    // vervelend is bij lange beheerformulieren. form.submit() (bijv. na de
+    // confirm-modal) vuurt geen 'submit'-event, dus confirmSubmit() hierboven
+    // roept dit expliciet aan.
+    const SCROLL_STORAGE_KEY = 'beheer_scroll_position';
+    function saveScrollPosition() {
+        try { sessionStorage.setItem(SCROLL_STORAGE_KEY, String(window.scrollY)); } catch (e) {}
+    }
+    document.addEventListener('submit', saveScrollPosition, true);
+    // Pas herstellen zodra de hele pagina (incl. afbeeldingen) is opgebouwd —
+    // dit script staat vlak na de header, dus de rest van de (vaak lange)
+    // pagina-inhoud is op dit moment nog niet gerenderd. scrollTo() zou dan
+    // meteen worden teruggeclampt naar de (nog kleine) maximale scrollhoogte.
+    window.addEventListener('load', function restoreScrollPosition() {
+        try {
+            const saved = sessionStorage.getItem(SCROLL_STORAGE_KEY);
+            if (saved !== null) {
+                sessionStorage.removeItem(SCROLL_STORAGE_KEY);
+                window.scrollTo(0, parseInt(saved, 10) || 0);
+            }
+        } catch (e) {}
+    });
 
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('confirm-modal-ok').addEventListener('click', function() {

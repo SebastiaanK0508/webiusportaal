@@ -7,6 +7,33 @@ require_once __DIR__ . '/auth.php';
 // moet dus eerst require_website_context() aanroepen voordat deze functies
 // zinnig resultaat geven.
 
+// Post/Redirect/Get helper: stuur na het verwerken van een POST-formulier
+// altijd door naar een GET-URL, met de melding/fout tijdelijk in de sessie.
+// Zo herlaadt een browser-refresh na het opslaan gewoon de pagina in plaats
+// van het formulier nog een keer te versturen (en de bijbehorende acties nog
+// een keer uit te voeren).
+function flash_redirect(string $location, string $message = '', string $error = ''): void
+{
+    if ($message !== '') {
+        $_SESSION['flash_message'] = $message;
+    }
+    if ($error !== '') {
+        $_SESSION['flash_error'] = $error;
+    }
+    header('Location: ' . $location);
+    exit;
+}
+
+// Haalt een eerder met flash_redirect() gezette melding/fout op en wist hem
+// meteen, zodat hij maar één keer getoond wordt.
+function get_flash_messages(): array
+{
+    $message = $_SESSION['flash_message'] ?? '';
+    $error = $_SESSION['flash_error'] ?? '';
+    unset($_SESSION['flash_message'], $_SESSION['flash_error']);
+    return [$message, $error];
+}
+
 function get_text($section_key)
 {
     global $pdo;
