@@ -12,7 +12,6 @@ function csrf_field(): string
     return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrf_token()) . '">';
 }
 
-// Stopt de request met 403 als het token ontbreekt of niet klopt.
 function csrf_verify(): void
 {
     $token = $_POST['csrf_token'] ?? '';

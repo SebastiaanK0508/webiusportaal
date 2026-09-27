@@ -3,11 +3,6 @@ require_once 'includes/init.php';
 $website_id = require_website_context();
 require_module($website_id, 'nieuws');
 
-/**
- * Verwerkt de geüploade afbeeldingen uit $_FILES['images'].
- * Bij een fout worden de al opgeslagen bestanden van deze request weer opgeruimd
- * en wordt de UploadException doorgegooid.
- */
 function handle_image_uploads($website_id)
 {
     $image_paths = [];
@@ -49,7 +44,6 @@ function valid_artikel_input(&$title, &$content, &$status)
     return $title !== '' && trim(strip_tags($content)) !== '';
 }
 
-// --- ARTIKEL TOEVOEGEN ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_artikel') {
     csrf_verify();
     if (!valid_artikel_input($title, $content, $status)) {
@@ -71,7 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_a
     exit;
 }
 
-// --- ARTIKEL BEWERKEN ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_artikel') {
     csrf_verify();
     $id = $_POST['id'] ?? '';
@@ -88,8 +81,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
         header("Location: nieuwsbeheer.php?msg=invalid");
         exit;
     }
-
-    // Alleen paden behouden die echt bij dit artikel horen (nooit vertrouwen op de client)
     $old_paths = $row['image_paths'] ? array_values(array_filter(explode(',', $row['image_paths']))) : [];
     $requested_keep = (array)($_POST['keep_images'] ?? []);
     $keep_paths = array_values(array_intersect($old_paths, $requested_keep));
@@ -104,8 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
     $final_paths = array_merge($keep_paths, $new_paths);
     $pdo->prepare("UPDATE nieuws SET title = ?, content = ?, image_paths = ?, status = ? WHERE id = ? AND website_id = ?")
         ->execute([$title, $content, $final_paths ? implode(',', $final_paths) : null, $status, $id, $website_id]);
-
-    // Pas na een geslaagde update de verwijderde afbeeldingen van schijf halen
     foreach (array_diff($old_paths, $keep_paths) as $p) {
         delete_uploaded_file($p);
     }
@@ -113,8 +102,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'edit_
     header("Location: nieuwsbeheer.php?msg=updated");
     exit;
 }
-
-// --- ARTIKEL VERWIJDEREN ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_artikel'])) {
     csrf_verify();
     $stmt = $pdo->prepare("SELECT image_paths FROM nieuws WHERE id = ? AND website_id = ?");
@@ -129,8 +116,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_artikel'])) {
     header("Location: nieuwsbeheer.php?msg=deleted");
     exit;
 }
-
-// --- STATUS WISSELEN (draft/published) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_status'])) {
     csrf_verify();
     $pdo->prepare("UPDATE nieuws SET status = IF(status = 'published', 'draft', 'published') WHERE id = ? AND website_id = ?")
@@ -142,8 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_status'])) {
 $stmt = $pdo->prepare("SELECT * FROM nieuws WHERE website_id = ? ORDER BY created_at DESC");
 $stmt->execute([$website_id]);
 $artikelen = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Data voor de bewerk-modal
 $artikelen_js = [];
 foreach ($artikelen as $a) {
     $artikelen_js[$a['id']] = [
@@ -240,8 +223,6 @@ foreach ($artikelen as $a) {
             <?php endif; ?>
         </div>
     </div>
-
-    <!-- ===== MODAL: toevoegen / bewerken ===== -->
     <div id="artikel-modal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
         <div class="absolute inset-0 bg-slate-900/50" data-close-modal></div>
         <div class="relative flex min-h-full items-start justify-center p-4 md:p-10 pointer-events-none">
@@ -279,7 +260,6 @@ foreach ($artikelen as $a) {
                                 + Afbeeldingen toevoegen
                                 <input type="file" id="artikel-file-picker" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="hidden">
                             </label>
-                            <!-- Dit veld wordt bij verzenden gevuld met de gekozen nieuwe bestanden -->
                             <input type="file" name="images[]" id="artikel-files" multiple class="hidden">
                         </div>
 
