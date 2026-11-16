@@ -215,6 +215,7 @@ const FOOTER_LINK_PAGES = [
     'about.php' => ['label' => 'Over Ons', 'icon' => 'people'],
     'geschiedenis.php' => ['label' => 'Geschiedenis', 'icon' => 'book'],
     'prijsvraag.php' => ['label' => 'Prijsvraag', 'icon' => 'trophy'],
+    'verhuizing.php' => ['label' => 'Verhuizing', 'icon' => 'truck'],
     'services/pasfotos.php' => ['label' => "Services: Pasfoto's", 'icon' => 'camera'],
     'services/postnl.php' => ['label' => 'Services: PostNL', 'icon' => 'package'],
     'services/rdw.php' => ['label' => 'Services: RDW', 'icon' => 'check-circle'],
@@ -227,6 +228,7 @@ const AVAILABLE_MODULES = [
     'nieuws'        => 'Nieuws',
     'prijsvraag'    => 'Prijsvraag',
     'geschiedenis'  => 'Geschiedenis',
+    'verhuizing'    => 'Verhuizing (tijdelijke pagina + melding)',
 ];
 
 function module_enabled(string $website_id, string $module_key): bool
@@ -245,7 +247,7 @@ function get_enabled_modules(string $website_id): array
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
 }
 
-// Zorgt dat een website precies de 5 module-rijen heeft (nieuw aangemaakte
+// Zorgt dat een website precies één rij per module in AVAILABLE_MODULES heeft (nieuw aangemaakte
 // sites hadden ze nog niet). Bestaande rijen blijven ongemoeid.
 function ensure_website_modules(string $website_id): void
 {
@@ -266,14 +268,17 @@ function set_website_modules(string $website_id, array $enabled_keys): void
     }
 }
 
-// Gate voor de vijf module-beheerpagina's: server-side check, onafhankelijk
-// van of de navlink al dan niet zichtbaar is.
 function require_module(string $website_id, string $module_key): void
 {
-    if (!module_enabled($website_id, $module_key)) {
-        http_response_code(403);
-        exit('Deze module is niet ingeschakeld voor deze website.');
+    if (module_enabled($website_id, $module_key)) {
+        return;
     }
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+        $label = AVAILABLE_MODULES[$module_key] ?? $module_key;
+        flash_redirect('websitebeheer.php', '', 'De module "' . $label . '" is niet ingeschakeld voor deze website.');
+    }
+    http_response_code(403);
+    exit('Deze module is niet ingeschakeld voor deze website.');
 }
 
 function set_footer_setting($sleutel, $waarde)

@@ -120,3 +120,14 @@ volgorde.
     tonen i.p.v. alleen de gebruikersnaam; ontbreekt de naam nog, dan valt de
     UI terug op de gebruikersnaam. Veilig, additief, geen bestaande data
     wordt aangeraakt.
+15. **`014_verhuizing_module.sql`** — voegt de module `verhuizing` toe
+    (tijdelijke pagina `debandijk/verhuizing.php` + navigatielink + gele
+    melding op de homepage, met uitlegblokken, FAQ en een klein
+    contactformulier) en de nieuwe tabel `verhuizing_items`. Elke website krijgt de module **uitgeschakeld**;
+    zet hem aan via `super_websites.php` bij de juiste website. Daarna staat hij nog
+    niet online: dat doet de schakelaar "Verhuizing tonen op de website"
+    bovenaan `verhuizingbeheer.php` (zet pagina, menulink en melding in één
+    keer aan/uit). De teksten
+    (datum, adres, uitlegblokken, FAQ, formulier, homepage-melding) beheer je op de eigen
+    pagina `verhuizingbeheer.php` (menu "Pagina's" → "Verhuizing").
+    Idempotent — veilig om opnieuw te draaien.

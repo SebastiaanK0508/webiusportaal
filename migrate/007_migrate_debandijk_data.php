@@ -1,21 +1,4 @@
 <?php
-/**
- * Migreert de site-specifieke data van de oude, losse `debandijk`-database
- * naar de nieuwe multi-tenant `webiusportaal`-database (module-tabellen uit
- * 006_module_tables.sql). Draai dit pas nadat 005 en 006 zijn uitgevoerd en
- * nadat de vijf nieuwe beheerpagina's tegen de lege tabellen zijn getest.
- *
- * Gebruik:
- *   php migrate/007_migrate_debandijk_data.php <website_id>
- *
- * Niet idempotent — draai dit precies één keer per website_id. Het script
- * weigert te starten als er al gemigreerde assortiment-data staat voor de
- * opgegeven website_id.
- *
- * Wijzigt alleen de `webiusportaal`-database en kopieert bestanden naar
- * webiusportaal/uploads/{website_id}/legacy/... — de `debandijk`-database
- * en debandijk/beheer/afbeeldingen/ worden alleen gelezen, nooit gewijzigd.
- */
 
 if (PHP_SAPI !== 'cli') {
     exit("Dit script moet via de command line gedraaid worden.\n");
@@ -48,11 +31,6 @@ function new_uuid(PDO $pdo): string
 {
     return $pdo->query('SELECT UUID()')->fetchColumn();
 }
-
-// Kopieert een afbeelding uit debandijk/beheer/afbeeldingen/{subfolder}/{filename}
-// naar webiusportaal/uploads/{website_id}/legacy/{subfolder}/{filename} en geeft
-// het nieuwe relatieve pad terug (of null als er geen bestand is / het ontbreekt —
-// bijv. de kolom-default 'default.webp' die nooit als los bestand bestond).
 function copy_legacy_image(?string $filename, string $subfolder, string $websiteId, string $debandijkRoot, string $webiusportaalRoot): ?string
 {
     if (empty($filename)) {
@@ -75,14 +53,11 @@ function copy_legacy_image(?string $filename, string $subfolder, string $website
 
 $summary = [];
 
-// --- Idempotentie-check ---
 $check = $dst->prepare("SELECT COUNT(*) FROM assortiment_categorieen WHERE website_id = ?");
 $check->execute([$website_id]);
 if ((int)$check->fetchColumn() > 0) {
     exit("Er staat al gemigreerde assortiment-data voor website_id {$website_id}. Dit script is niet idempotent — er is hier niets meer te doen.\n");
 }
-
-// --- 1. assortiment_categories -> assortiment_categorieen ---
 $catMap = [];
 $rows = $src->query("SELECT * FROM assortiment_categories")->fetchAll();
 $ins = $dst->prepare("INSERT INTO assortiment_categorieen (id, website_id, titel, beschrijving, afbeelding, badge_tekst, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)");
@@ -93,8 +68,6 @@ foreach ($rows as $r) {
     $ins->execute([$newId, $website_id, $r['titel'], $r['beschrijving'], $afbeelding, $r['badge_tekst'], (int)$r['sorteer_volgorde']]);
 }
 $summary['assortiment_categorieen'] = count($rows);
-
-// --- 2. assortiment_merken -> assortiment_merken ---
 $rows = $src->query("SELECT * FROM assortiment_merken ORDER BY category_id, id")->fetchAll();
 $ins = $dst->prepare("INSERT INTO assortiment_merken (id, website_id, category_id, naam, logo_path, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
 $sortByCat = [];
@@ -102,7 +75,7 @@ $skipped_merken = 0;
 foreach ($rows as $r) {
     if (!isset($catMap[$r['category_id']])) {
         $skipped_merken++;
-        continue; // wees-rij: categorie bestond niet (mag niet voorkomen, maar geen data verliezen door een fatal error)
+        continue; 
     }
     $newCatId = $catMap[$r['category_id']];
     $sortByCat[$newCatId] = ($sortByCat[$newCatId] ?? 0) + 1;
@@ -111,8 +84,6 @@ foreach ($rows as $r) {
     $ins->execute([$newId, $website_id, $newCatId, $r['naam'], $logoPath, $sortByCat[$newCatId]]);
 }
 $summary['assortiment_merken'] = count($rows) - $skipped_merken;
-
-// --- 3. cadeaukaarten -> cadeaukaarten ---
 $rows = $src->query("SELECT * FROM cadeaukaarten ORDER BY id")->fetchAll();
 $ins = $dst->prepare("INSERT INTO cadeaukaarten (id, website_id, kaart_naam, geschikte_winkels, tags, afbeelding, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
 $i = 0;
@@ -123,8 +94,6 @@ foreach ($rows as $r) {
     $ins->execute([$newId, $website_id, $r['kaart_naam'], $r['geschikte_winkels'], $r['tags'], $afbeelding, $i, $r['created_at']]);
 }
 $summary['cadeaukaarten'] = count($rows);
-
-// --- 4. news -> nieuws ---
 $rows = $src->query("SELECT * FROM news ORDER BY created_at ASC")->fetchAll();
 $ins = $dst->prepare("INSERT INTO nieuws (id, website_id, title, content, image_paths, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
 foreach ($rows as $r) {
@@ -133,8 +102,6 @@ foreach ($rows as $r) {
     $ins->execute([$newId, $website_id, $r['title'], $r['content'], $imagePath, $r['status'] ?: 'published', $r['created_at']]);
 }
 $summary['nieuws'] = count($rows);
-
-// --- 5. contact_messages -> contact_messages ---
 $rows = $src->query("SELECT * FROM contact_messages ORDER BY created_at ASC")->fetchAll();
 $ins = $dst->prepare("INSERT INTO contact_messages (id, website_id, name, email, phone, subject, message, status, is_read, created_at) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)");
 foreach ($rows as $r) {
@@ -144,8 +111,6 @@ foreach ($rows as $r) {
     $ins->execute([$newId, $website_id, $r['name'], $r['email'], $subject, $r['message'], $r['status'] ?: 'nieuw', $isRead, $r['created_at']]);
 }
 $summary['contact_messages'] = count($rows);
-
-// --- 6. prijsvraag_instellingen (1 rij, id=1) -> prijsvraag_instellingen (website_id PK) ---
 $row = $src->query("SELECT * FROM prijsvraag_instellingen WHERE id = 1")->fetch();
 if ($row) {
     $afbeelding = copy_legacy_image($row['afbeelding_url'], 'prijsvraag', $website_id, $debandijkRoot, $webiusportaalRoot);
@@ -155,8 +120,6 @@ if ($row) {
 } else {
     $summary['prijsvraag_instellingen'] = 0;
 }
-
-// --- 7. prijsvraag_inzendingen -> prijsvraag_inzendingen ---
 $rows = $src->query("SELECT * FROM prijsvraag_inzendingen ORDER BY datum ASC")->fetchAll();
 $ins = $dst->prepare("INSERT INTO prijsvraag_inzendingen (id, website_id, voornaam, achternaam, email, telefoon, antwoord, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
 foreach ($rows as $r) {
@@ -164,9 +127,6 @@ foreach ($rows as $r) {
     $ins->execute([$newId, $website_id, $r['voornaam'], $r['achternaam'], $r['email'], $r['telefoon'], $r['antwoord'], $r['datum']]);
 }
 $summary['prijsvraag_inzendingen'] = count($rows);
-
-// --- 8. opening_hours: seed met de tijden die nu hardcoded in index.php/contact.php staan ---
-// day_of_week: 0=zondag .. 6=zaterdag (JS Date.getDay())
 $openingHours = [
     ['day' => 0, 'opens' => null,     'closes' => null,     'closed' => 1, 'note' => null],
     ['day' => 1, 'opens' => '08:00', 'closes' => '18:00', 'closed' => 0, 'note' => null],
@@ -181,8 +141,6 @@ foreach ($openingHours as $oh) {
     $ins->execute([$website_id, $oh['day'], $oh['opens'], $oh['closes'], $oh['closed'], $oh['note']]);
 }
 $summary['opening_hours'] = count($openingHours);
-
-// --- 9. geschiedenis: de 7 tijdlijn-items uit debandijk/geschiedenis.php samengevoegd tot HTML ---
 $geschiedenisContent = <<<HTML
 <h3>1 april 1994 — De Start op Nummer 94</h3>
 <p>Op deze dag opende René, samen met Gerri, de deur van hun winkel 'De Bandijk' aan de Grotestraat 94. De focus lag op tabak, snoep en kado's. René was 27 jaar en startte de winkel met een bijzondere motivatie: er was bij hem Retinitis pigmentosa ontdekt. Om niet afhankelijk te worden van een uitkering, besloot hij met volle gedrevenheid zelf aan de bak te gaan. Binnen een jaar bleek echter dat het pand moest wijken voor de bouw van het nieuwe gemeentehuis en politiebureau.</p>
@@ -213,28 +171,22 @@ HTML;
 $dst->prepare("INSERT INTO geschiedenis (website_id, title, content) VALUES (?, ?, ?)")
     ->execute([$website_id, 'Onze Geschiedenis', $geschiedenisContent]);
 $summary['geschiedenis'] = 1;
-
-// --- 10. users: Cindy en Rene migreren (Sebastiaan bestaat al in webiusportaal) ---
 $existingUsernames = $dst->query("SELECT LOWER(username) FROM users")->fetchAll(PDO::FETCH_COLUMN);
 $rows = $src->query("SELECT * FROM users")->fetchAll();
 $migratedUsers = [];
 $ins = $dst->prepare("INSERT INTO users (id, website_id, role, username, email, password_hash, is_active) VALUES (UUID(), ?, 'client', ?, ?, ?, 1)");
 foreach ($rows as $r) {
     if (in_array(strtolower($r['username']), $existingUsernames, true)) {
-        continue; // bestaat al (bijv. Sebastiaan)
+        continue;
     }
     $placeholderEmail = strtolower($r['username']) . '@primeradebandijk.nl.placeholder-update-me';
     $ins->execute([$website_id, $r['username'], $placeholderEmail, $r['password']]);
     $migratedUsers[] = ['username' => $r['username'], 'email' => $placeholderEmail];
 }
 $summary['users'] = count($migratedUsers);
-
-// --- 11. Alle 5 modules inschakelen voor deze website ---
 $dst->prepare("INSERT INTO website_modules (website_id, module_key, is_enabled) VALUES (?, 'assortiment', 1), (?, 'cadeaukaarten', 1), (?, 'nieuws', 1), (?, 'prijsvraag', 1), (?, 'geschiedenis', 1)
     ON DUPLICATE KEY UPDATE is_enabled = 1")
     ->execute([$website_id, $website_id, $website_id, $website_id, $website_id]);
-
-// --- Samenvatting ---
 echo "Migratie voltooid voor website_id {$website_id}:\n";
 foreach ($summary as $table => $count) {
     echo "  - {$table}: {$count} rij(en)\n";

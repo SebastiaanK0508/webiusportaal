@@ -11,7 +11,7 @@ function websitebeheer_redirect_after_post($tab, $message = '', $error = '')
 }
 if (isset($_POST['update_content'])) {
     csrf_verify();
-    $pdo->prepare("UPDATE site_content SET is_visible = 0 WHERE website_id = ? AND section_key NOT LIKE 'service_%' AND section_key NOT LIKE '%\\_image%' AND section_key NOT LIKE 'social\\_%'")->execute([$website_id]);
+    $pdo->prepare("UPDATE site_content SET is_visible = 0 WHERE website_id = ? AND section_key NOT LIKE 'service_%' AND section_key NOT LIKE '%\\_image%' AND section_key NOT LIKE 'social\\_%' AND page <> 'verhuizing'")->execute([$website_id]);
     if (isset($_POST['content'])) {
         foreach ($_POST['content'] as $page => $items) {
             foreach ($items as $key => $value) {
@@ -214,7 +214,7 @@ if (isset($_POST['delete_team_member'])) {
     websitebeheer_redirect_after_post('team', $message);
 }
 
-$algemeen_content = $pdo->prepare("SELECT * FROM site_content WHERE website_id = ? AND section_key NOT LIKE 'service_%' AND section_key NOT LIKE '%\\_image%' AND section_key NOT LIKE 'social\\_%' ORDER BY page, section_key");
+$algemeen_content = $pdo->prepare("SELECT * FROM site_content WHERE website_id = ? AND section_key NOT LIKE 'service_%' AND section_key NOT LIKE '%\\_image%' AND section_key NOT LIKE 'social\\_%' AND page <> 'verhuizing' ORDER BY page, section_key");
 $algemeen_content->execute([$website_id]);
 $algemeen_content = $algemeen_content->fetchAll();
 

@@ -18,6 +18,7 @@ $module_pages = [
     'nieuws'        => ['label' => 'Nieuws',        'href' => 'nieuwsbeheer.php'],
     'prijsvraag'    => ['label' => 'Prijsvraag',    'href' => 'prijsvraagbeheer.php'],
     'geschiedenis'  => ['label' => 'Geschiedenis',  'href' => 'geschiedenisbeheer.php'],
+    'verhuizing'    => ['label' => 'Verhuizing',    'href' => 'verhuizingbeheer.php'],
 ];
 
 $switchable_websites = [];
