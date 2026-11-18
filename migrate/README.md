@@ -131,3 +131,8 @@ volgorde.
     (datum, adres, uitlegblokken, FAQ, formulier, homepage-melding) beheer je op de eigen
     pagina `verhuizingbeheer.php` (menu "Pagina's" → "Verhuizing").
     Idempotent — veilig om opnieuw te draaien.
+16. **`015_verhuizing_fotos_blog.sql`** — breidt de verhuismodule uit met een
+    fotogalerij (zoveel foto's als je wilt, site_content `fotos`) en een blog
+    ("Volg de verhuizing", nieuwe tabel `verhuizing_blog`). Beide hebben een
+    eigen aan/uit-schakelaar op `verhuizingbeheer.php`, en elk blogbericht kan
+    los getoond of verborgen worden. Idempotent — veilig om opnieuw te draaien.

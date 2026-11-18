@@ -5,35 +5,7 @@ require_module($website_id, 'nieuws');
 
 function handle_image_uploads($website_id)
 {
-    $image_paths = [];
-    if (empty($_FILES['images']['name'][0])) {
-        return $image_paths;
-    }
-    $count = count($_FILES['images']['name']);
-    for ($i = 0; $i < $count; $i++) {
-        if ($_FILES['images']['error'][$i] === UPLOAD_ERR_NO_FILE) {
-            continue;
-        }
-        $_FILES['__single_image'] = [
-            'name' => $_FILES['images']['name'][$i],
-            'type' => $_FILES['images']['type'][$i],
-            'tmp_name' => $_FILES['images']['tmp_name'][$i],
-            'error' => $_FILES['images']['error'][$i],
-            'size' => $_FILES['images']['size'][$i],
-        ];
-        try {
-            $path = save_uploaded_image('__single_image', $website_id);
-            if ($path) {
-                $image_paths[] = $path;
-            }
-        } catch (UploadException $e) {
-            foreach ($image_paths as $p) {
-                delete_uploaded_file($p);
-            }
-            throw $e;
-        }
-    }
-    return $image_paths;
+    return save_uploaded_images('images', $website_id);
 }
 
 function valid_artikel_input(&$title, &$content, &$status)
