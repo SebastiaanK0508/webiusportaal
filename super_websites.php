@@ -119,6 +119,16 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_website') {
             $stmt->execute([$domain, $company, $template_key, $primary ?: null, $secondary ?: null, $accent ?: null, $font, $is_active, $id]);
             set_website_modules($id, $_POST['modules'] ?? []);
             $message = "Website bijgewerkt.";
+            $ga_property = trim($_POST['ga_property_id'] ?? '');
+            if ($ga_property !== '' && !ctype_digit($ga_property)) {
+                $error = "Het GA4 property-ID bestaat alleen uit cijfers (bijv. 522235041).";
+            } else {
+                try {
+                    $pdo->prepare("UPDATE websites SET ga_property_id = ? WHERE id = ?")->execute([$ga_property ?: null, $id]);
+                } catch (PDOException $e) {
+                    $error = "GA4 property-ID niet opgeslagen: draai eerst migrate/016_google_analytics.sql.";
+                }
+            }
         }
     }
     flash_redirect('super_websites.php?tab=websites', $message, $error);
@@ -429,6 +439,11 @@ $users = $pdo->query("
                                                         </label>
                                                     <?php endforeach; ?>
                                                 </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Google Analytics 4 property-ID (optioneel)</label>
+                                                <input type="text" name="ga_property_id" inputmode="numeric" pattern="[0-9]*" value="<?php echo htmlspecialchars($w['ga_property_id'] ?? ''); ?>" placeholder="bijv. 522235041" class="w-full border-gray-300 rounded-md border p-2">
+                                                <p class="text-xs text-gray-500 mt-1">Toont een bezoekersgrafiek op het dashboard. Geef het service-account Viewer-toegang tot deze property in GA4.</p>
                                             </div>
                                             <label class="inline-flex items-center gap-2 cursor-pointer">
                                                 <input type="checkbox" name="is_active" value="1" <?php echo $w['is_active'] ? 'checked' : ''; ?> class="rounded border-gray-300 text-pink-600 focus:ring-pink-500">

@@ -136,3 +136,13 @@ volgorde.
     ("Volg de verhuizing", nieuwe tabel `verhuizing_blog`). Beide hebben een
     eigen aan/uit-schakelaar op `verhuizingbeheer.php`, en elk blogbericht kan
     los getoond of verborgen worden. Idempotent — veilig om opnieuw te draaien.
+17. **`016_google_analytics.sql`** — voegt `ga_property_id` toe aan `websites`
+    en vult het GA4 property-ID van debandijk in. Het dashboard (`beheer.php`)
+    toont daarmee een bezoekersgrafiek (14 dagen) en het aantal live bezoekers
+    voor de geselecteerde website; websites zonder property-ID krijgen geen
+    analytics-blok. Het service-account staat in
+    `credentials/analytics-key.json` (niet in git, map is afgeschermd met
+    `.htaccess`) — **upload dat bestand handmatig naar de server**, of zet
+    `GA_CREDENTIALS_FILE` in `.env` naar een pad buiten de webroot. Voor een
+    extra website: geef het service-account Viewer-toegang in GA4 en vul het
+    property-ID in bij de website in `super_websites.php`. Idempotent.

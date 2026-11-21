@@ -51,6 +51,7 @@ if (empty($enabled_modules)) {
     } catch (Throwable $e) {
     }
 }
+$analytics = get_website_analytics($website);
 $tile_color_classes = [
     'pink' => 'bg-pink-50 text-pink-600',
     'indigo' => 'bg-indigo-50 text-indigo-600',
@@ -109,6 +110,63 @@ $shortcuts[] = ['href' => 'legalbeheer.php', 'title' => 'Legals', 'desc' => 'Beh
                 </div>
             <?php endforeach; ?>
         </div>
+        <?php if ($analytics !== null): ?>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-10">
+                <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-800">Websitebezoekers</h2>
+                        <p class="text-sm text-gray-500">Laatste 14 dagen<?php if (empty($analytics['error'])): ?> &middot; totaal <strong class="text-gray-800"><?php echo (int)$analytics['total']; ?></strong><?php endif; ?></p>
+                    </div>
+                    <?php if (empty($analytics['error'])): ?>
+                        <div class="flex items-center gap-2 bg-red-50 px-3 py-1.5 rounded-full">
+                            <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                            <span class="text-red-600 text-xs font-bold uppercase"><?php echo (int)$analytics['active_now']; ?> nu live</span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php if (!empty($analytics['error'])): ?>
+                    <p class="text-sm text-gray-400"><?php echo htmlspecialchars($analytics['error']); ?></p>
+                <?php else: ?>
+                    <div class="relative h-56">
+                        <canvas id="analyticsChart"></canvas>
+                    </div>
+                    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+                    <script>
+                        (function () {
+                            const brand = getComputedStyle(document.documentElement).getPropertyValue('--brand-primary').trim() || '#db2777';
+                            new Chart(document.getElementById('analyticsChart'), {
+                                type: 'line',
+                                data: {
+                                    labels: <?php echo json_encode($analytics['labels']); ?>,
+                                    datasets: [{
+                                        label: 'Bezoekers',
+                                        data: <?php echo json_encode($analytics['data']); ?>,
+                                        borderColor: brand,
+                                        backgroundColor: brand + '14',
+                                        borderWidth: 3,
+                                        tension: 0.4,
+                                        fill: true,
+                                        pointRadius: 0,
+                                        pointHoverRadius: 6,
+                                        pointHitRadius: 20
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    interaction: { mode: 'index', intersect: false },
+                                    plugins: { legend: { display: false } },
+                                    scales: {
+                                        y: { beginAtZero: true, ticks: { precision: 0, color: '#9ca3af' }, grid: { color: '#f3f4f6' } },
+                                        x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } }
+                                    }
+                                }
+                            });
+                        })();
+                    </script>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="lg:col-span-2 space-y-6">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200">
